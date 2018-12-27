@@ -2,6 +2,8 @@ import json
 import requests
 import os
 import datetime
+import threading
+from requests.exceptions import ChunkedEncodingError
 
 from google.cloud import storage
 from google.cloud import logging
@@ -25,11 +27,16 @@ class HttpStream(object):
             self.logger = self.logging_client.logger(log_name)
 
     def __read_stream(self):
-        r = requests.get(self.url, stream=True)
-        for line in r.iter_lines():
-            if line:
-                decoded_line = line.decode('utf-8')
-                yield json.loads(decoded_line)
+        while True:
+            try:
+                with requests.get(self.url, stream=True) as r:
+                    for line in r.iter_lines():
+                        if line:
+                            decoded_line = line.decode('utf-8')
+                            yield json.loads(decoded_line)
+            except ChunkedEncodingError:
+                self.logger.log_text("Chunked Error at {}".format(str( datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))))
+                continue
 
     def write_to_bucket(self, gcs_bucket, prefix=None):
         bucket = self.storage_client.get_bucket(gcs_bucket)
@@ -58,10 +65,29 @@ class HttpStream(object):
                                                                         .strftime('%Y-%m-%d %H:%M:%S')))
 
 
-if __name__ == "__main__":
-    with open('config.json') as f:
-        conf = json.load(f)
+def write_stream(url, gcs_bucket, prefix):
+    stream_data = HttpStream(url=url)
+    stream_data.write_to_bucket(gcs_bucket=gcs_bucket
+                                , prefix=prefix)
 
-    meetup_data = HttpStream(url=conf["url"])
-    meetup_data.write_to_bucket(gcs_bucket=conf["gcs_bucket"], prefix=conf["prefix"])
+
+if __name__ == "__main__":
+    t1 = threading.Thread(target=write_stream, args=("http://stream.meetup.com/2/event_comments","meetup_data",
+                                                     "event_comments"))
+    t2 = threading.Thread(target=write_stream, args=("http://stream.meetup.com/2/open_events","meetup_data",
+                                                     "open_events"))
+    t3 = threading.Thread(target=write_stream, args=("http://stream.meetup.com/2/open_venues","meetup_data",
+                                                     "open_venues"))
+    t4 = threading.Thread(target=write_stream, args=("http://stream.meetup.com/2/photos","meetup_data",
+                                                     "photos"))
+    t5 = threading.Thread(target=write_stream, args=("http://stream.meetup.com/2/rsvps","meetup_data",
+                                                     "rsvp"))
+
+    # starting thread 1
+    t1.start()
+    t2.start()
+    t3.start()
+    t4.start()
+    t5.start()
+
 
