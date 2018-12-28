@@ -6,6 +6,12 @@
 		"mode": "NULLABLE"
     },
 	{
+	   "description": "Last updated time in milliseconds since the epoch",
+	   "name": "mtime",
+	   "type": "INTEGER",
+	   "mode": "NULLABLE"
+	},
+	{
 		"description": "If available, the second address line of the venue",
 		"name": "address_2",
 		"type": "STRING",
