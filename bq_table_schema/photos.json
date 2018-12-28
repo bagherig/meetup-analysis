@@ -1,0 +1,182 @@
+[
+	{
+	   "description": "Photo caption if available",
+	   "name": "caption",
+	   "type": "STRING",
+	   "mode": "NULLABLE"
+	},
+	{
+	   "description": "Created time in millisseconds since the epoch",
+	   "name": "ctime",
+	   "type": "INTEGER",
+	   "mode": "NULLABLE"
+	},
+	{
+	   "description": "URL for the original sized photo",
+	   "name": "highres_link",
+	   "type": "STRING",
+	   "mode": "NULLABLE"
+	},
+	{
+	   "description": "Member that uploaded the photo",
+	   "name": "member",
+	   "type": "RECORD",
+	   "mode": "REPEATED",
+	   "fields": [
+			{
+			   "description": "ID of the member",
+			   "name": "member_id",
+			   "type": "INTEGER",
+			   "mode": "NULLABLE"
+			},
+			{
+			   "description": "Name of the member",
+			   "name": "name",
+			   "type": "STRING",
+			   "mode": "NULLABLE"
+			}
+	   ]
+    },
+	{
+	   "description": "Last updated time in milliseconds since the epoch",
+	   "name": "mtime",
+	   "type": "INTEGER",
+	   "mode": "NULLABLE"
+	},
+	{
+	   "description": "Photo album this photo belongs to",
+	   "name": "photo_album",
+	   "type": "RECORD",
+	   "mode": "REPEATED",
+	   "fields": [
+			{
+			   "description": "Event, when available, associated with the photo album",
+			   "name": "event",
+			   "type": "RECORD",
+			   "mode": "REPEATED",
+			   "fields": [
+				   {
+				   "description": "ID of the event",
+				   "name": "id",
+				   "type": "INTEGER",
+				   "mode": "NULLABLE"
+				   },
+				   {
+				   "description": "Name of event",
+				   "name": "name",
+				   "type": "STRING",
+				   "mode": "NULLABLE"
+				   }
+			   ]
+
+			},
+			{
+			   "description": "Group associated with photo album",
+			   "name": "group",
+			   "type": "RECORD",
+			   "mode": "REPEATED",
+			   "fields": [
+				   {
+				   "description": "Group city",
+				   "name": "city",
+				   "type": "STRING",
+				   "mode": "NULLABLE"
+				   },
+				   {
+				   "description": "Group country code",
+				   "name": "country",
+				   "type": "STRING",
+				   "mode": "NULLABLE"
+				   },
+				   {
+				   "description": "Group latitude",
+				   "name": "group_lat",
+				   "type": "FLOAT",
+				   "mode": "NULLABLE"
+				   },
+				   {
+				   "description": "Group longitude",
+				   "name": "group_lon",
+				   "type": "FLOAT",
+				   "mode": "NULLABLE"
+				   },
+				   {
+				   "description": "Topics associated with this group",
+				   "name": "group_topics",
+				   "type": "RECORD",
+				   "mode": "REPEATED",
+				   "fields": [
+							{
+							   "description": "Longer name",
+							   "name": "topic_name",
+							   "type": "STRING",
+							   "mode": "NULLABLE"
+							},
+							{
+							   "description": "Unique keyword",
+							   "name": "urlkey",
+							   "type": "STRING",
+							   "mode": "NULLABLE"
+							}
+				   ]},
+				   {
+				   "description": "open, approval, or closed",
+				   "name": "join_mode",
+				   "type": "STRING",
+				   "mode": "NULLABLE"
+				   },
+				   {
+				   "description": "ID of group",
+				   "name": "id",
+				   "type": "INTEGER",
+				   "mode": "NULLABLE"
+				   },
+				   {
+				   "description": "Name of group",
+				   "name": "name",
+				   "type": "STRING",
+				   "mode": "NULLABLE"
+				   },
+				   {
+				   "description": "If in the US, the state of the group",
+				   "name": "state",
+				   "type": "STRING",
+				   "mode": "NULLABLE"
+				   },
+				   {
+				   "description": "Unique portion of group's URL, no slashes",
+				   "name": "urlname",
+				   "type": "STRING",
+				   "mode": "NULLABLE"
+				   }
+				   
+			   ]
+
+			},
+			{
+				"description": "ID for the photo album",
+			    "name": "photo_album_id",
+			    "type": "INTEGER",
+			    "mode": "NULLABLE"
+		    }
+	   ]
+    },
+	{
+		"description": "ID of the photo",
+		"name": "photo_id",
+		"type": "INTEGER",
+		"mode": "NULLABLE"
+	},
+	{
+		"description": "URL for the standard sized photo",
+		"name": "photo_link",
+		"type": "STRING",
+		"mode": "NULLABLE"
+	},
+	{
+		"description": "URL for the thumbail sized photo",
+		"name": "thumb_link",
+		"type": "STRING",
+		"mode": "NULLABLE"
+	}
+]

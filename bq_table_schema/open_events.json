@@ -1,0 +1,294 @@
+[
+    {
+		"description": "HTML Description of the event",
+		"name": "description",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "Event duration in milliseconds, if an end time is specified by the organizer. When not present, a default of 3 hours may be assumed by applications.",
+		"name": "duration",
+		"type": "INTEGER",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "URL of the event's page on meetup.com",
+		"name": "event_url",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    },
+	{
+	   "description": "fee info returned when payment is required",
+	   "name": "fee",
+	   "type": "RECORD",
+	   "mode": "NULLABLE",
+	   "fields": [
+			{
+			   "description": "amount of the fee",
+			   "name": "amount",
+			   "type": "FLOAT",
+			   "mode": "NULLABLE"
+			},
+			{
+			   "description": "currency accepted for fee",
+			   "name": "currency",
+			   "type": "STRING",
+			   "mode": "NULLABLE"
+			},
+			{
+			   "description": "fee description",
+			   "name": "description",
+			   "type": "STRING",
+			   "mode": "NULLABLE"
+			}
+	   ]
+    },
+    {
+	   "description": "Group hosting the event",
+	   "name": "group",
+	   "type": "RECORD",
+	   "mode": "REPEATED",
+	   "fields": [
+			{
+			   "description": "Group category",
+			   "name": "category",
+			   "type": "RECORD",
+			   "mode": "REPEATED",
+			   "fields": [
+					{
+					   "description": "Numeric identifier of the category",
+					   "name": "id",
+					   "type": "INTEGER",
+					   "mode": "NULLABLE"
+					},
+					{
+					   "description": "Display name of the category",
+					   "name": "name",
+					   "type": "STRING",
+					   "mode": "NULLABLE"
+					},
+					{
+					   "description": "String identifier of the category",
+					   "name": "shortname",
+					   "type": "STRING",
+					   "mode": "NULLABLE"
+					}
+			   ]
+			},
+			{
+		   "description": "Latitude of group's approximate location",
+		   "name": "group_lat",
+		   "type": "FLOAT",
+		   "mode": "NULLABLE"
+			},
+			{
+		   "description": "Longitude of group's approximate location",
+		   "name": "group_lon",
+		   "type": "FLOAT",
+		   "mode": "NULLABLE"
+			},
+			{
+			   "description": "Group photo if one is set",
+			   "name": "group_photo",
+			   "type": "RECORD",
+			   "mode": "REPEATED",
+			   "fields": [
+					{
+					   "description": "Link to full sized photo",
+					   "name": "highres_link",
+					   "type": "STRING",
+					   "mode": "NULLABLE"
+					},
+					{
+					   "description": "Numeric identifier of the photo",
+					   "name": "photo_id",
+					   "type": "INTEGER",
+					   "mode": "NULLABLE"
+					},
+					{
+					   "description": "Link to standard sized photo",
+					   "name": "photo_link",
+					   "type": "STRING",
+					   "mode": "NULLABLE"
+					},
+					{
+					   "description": "Link to thumbnail sized photo",
+					   "name": "thumb_link",
+					   "type": "STRING",
+					   "mode": "NULLABLE"
+					}
+			   ]
+			},
+		    {
+		    "description": "open, approval, or closed",
+		    "name": "join_mode",
+		    "type": "STRING",
+		    "mode": "NULLABLE"
+		    },
+		    {
+		    "description": "ID of group",
+		    "name": "id",
+		    "type": "INTEGER",
+		    "mode": "NULLABLE"
+		    },
+		    {
+		    "description": "Name of group",
+		    "name": "name",
+		    "type": "STRING",
+		    "mode": "NULLABLE"
+		    },
+		    {
+		    "description": "Unique portion of group's URL, no slashes",
+		    "name": "urlname",
+		    "type": "STRING",
+		    "mode": "NULLABLE"
+		    }
+	   ]
+	},
+	{
+		"description": "The event id, May be numeric or alphanumeric, always served as a string",
+		"name": "id",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "Last modified time of this event, in milliseconds since the epoch",
+		"name": "mtime",
+		"type": "INTEGER",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "The name of the event",
+		"name": "name",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "1 if required 0 otherwise",
+		"name": "payment_required",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "URL of the event photo, if any",
+		"name": "photo_url",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "The number of 'yes' rsvps an event can have before members will be added to the waiting list",
+		"name": "rsvp_limit",
+		"type": "INTEGER",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "upcoming, proposed, suggested, canceled or deleted",
+		"name": "status",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "UTC start time of the event, in milliseconds since the epoch",
+		"name": "time",
+		"type": "INTEGER",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "The local offset from UTC time, in milliseconds",
+		"name": "utc_offset",
+		"type": "INTEGER",
+		"mode": "NULLABLE"
+    },
+	{
+	   "description": "Venue, if selected and not hidden",
+	   "name": "venue",
+	   "type": "RECORD",
+	   "mode": "NULLABLE",
+	   "fields": [
+			{
+				"description": "If available, the first address line of the venue",
+				"name": "address_1",
+				"type": "STRING",
+				"mode": "NULLABLE"
+			},
+			{
+				"description": "If available, the second address line of the venue",
+				"name": "address_2",
+				"type": "STRING",
+				"mode": "NULLABLE"
+			},
+			{
+				"description": "If available, the third address line of the venue",
+				"name": "address_3",
+				"type": "STRING",
+				"mode": "NULLABLE"
+			},
+			{
+				"description": "If available, the name of the venue's city",
+				"name": "city",
+				"type": "STRING",
+				"mode": "NULLABLE"
+			},
+			{
+				"description": "If available, the name of the venue's country code",
+				"name": "country",
+				"type": "STRING",
+				"mode": "NULLABLE"
+			},
+			{
+				"description": "ID of the venue",
+				"name": "id",
+				"type": "INTEGER",
+				"mode": "NULLABLE"
+			},
+			{
+				"description": "If available, the venue's latitude",
+				"name": "lat",
+				"type": "FLOAT",
+				"mode": "NULLABLE"
+			},
+			{
+				"description": "If available, the venue's longitude",
+				"name": "lon",
+				"type": "FLOAT",
+				"mode": "NULLABLE"
+			},
+			{
+				"description": "If available, the venue's name",
+				"name": "name",
+				"type": "STRING",
+				"mode": "NULLABLE"
+			},
+			{
+				"description": "If available, the venue's phone number",
+				"name": "phone",
+				"type": "STRING",
+				"mode": "NULLABLE"
+			},
+			{
+				"description": "If available and the venue's country is within the US or Canada, the venue's state",
+				"name": "state",
+				"type": "STRING",
+				"mode": "NULLABLE"
+			},
+			{
+				"description": "If available, the venue's zipcode",
+				"name": "zip",
+				"type": "STRING",
+				"mode": "NULLABLE"
+			}
+	   ]
+	},
+	{
+		"description": "Set to 'members' or 'public'. The 'venue' element will not be present if the visibility is 'members'.",
+		"name": "venue_visibility",
+		"type": "STRING",
+		"mode": "NULLABLE"
+	},
+	{
+		"description": "Number of yes RSVPs including guests",
+		"name": "yes_rsvp_count",
+		"type": "INTEGER",
+		"mode": "NULLABLE"
+	}
+]

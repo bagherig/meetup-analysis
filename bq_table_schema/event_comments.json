@@ -1,0 +1,174 @@
+[
+	{
+		"description": "The comment text",
+		"name": "comment",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    },
+	{
+	   "description": "Event comment was posted in",
+	   "name": "fee",
+	   "type": "RECORD",
+	   "mode": "NULLABLE",
+	   "fields": [
+		   {
+				"description": "Unique numeric id",
+				"name": "event_id",
+				"type": "STRING",
+				"mode": "NULLABLE"
+		   },
+		   {
+				"description": "Name of the event",
+				"name": "event_name",
+				"type": "STRING",
+				"mode": "NULLABLE"
+		   }
+	   ]
+	},
+    {
+	   "description": "Group hosting the event",
+	   "name": "group",
+	   "type": "RECORD",
+	   "mode": "REPEATED",
+	   "fields": [
+			{
+			   "description": "Group category",
+			   "name": "category",
+			   "type": "RECORD",
+			   "mode": "REPEATED",
+			   "fields": [
+					{
+					   "description": "Numeric identifier of the category",
+					   "name": "id",
+					   "type": "INTEGER",
+					   "mode": "NULLABLE"
+					},
+					{
+					   "description": "Display name of the category",
+					   "name": "name",
+					   "type": "STRING",
+					   "mode": "NULLABLE"
+					},
+					{
+					   "description": "String identifier of the category",
+					   "name": "shortname",
+					   "type": "STRING",
+					   "mode": "NULLABLE"
+					}
+			   ]
+			},
+			{
+		   "description": "Latitude of group's approximate location",
+		   "name": "group_lat",
+		   "type": "FLOAT",
+		   "mode": "NULLABLE"
+			},
+			{
+		   "description": "Longitude of group's approximate location",
+		   "name": "group_lon",
+		   "type": "FLOAT",
+		   "mode": "NULLABLE"
+			},
+			{
+			   "description": "Group photo if one is set",
+			   "name": "group_photo",
+			   "type": "RECORD",
+			   "mode": "REPEATED",
+			   "fields": [
+					{
+					   "description": "Link to full sized photo",
+					   "name": "highres_link",
+					   "type": "STRING",
+					   "mode": "NULLABLE"
+					},
+					{
+					   "description": "Numeric identifier of the photo",
+					   "name": "photo_id",
+					   "type": "INTEGER",
+					   "mode": "NULLABLE"
+					},
+					{
+					   "description": "Link to standard sized photo",
+					   "name": "photo_link",
+					   "type": "STRING",
+					   "mode": "NULLABLE"
+					},
+					{
+					   "description": "Link to thumbnail sized photo",
+					   "name": "thumb_link",
+					   "type": "STRING",
+					   "mode": "NULLABLE"
+					}
+			   ]
+			},
+		    {
+		    "description": "open, approval, or closed",
+		    "name": "join_mode",
+		    "type": "STRING",
+		    "mode": "NULLABLE"
+		    },
+		    {
+		    "description": "ID of group",
+		    "name": "id",
+		    "type": "INTEGER",
+		    "mode": "NULLABLE"
+		    },
+		    {
+		    "description": "Name of group",
+		    "name": "name",
+		    "type": "STRING",
+		    "mode": "NULLABLE"
+		    },
+		    {
+		    "description": "Unique portion of group's URL, no slashes",
+		    "name": "urlname",
+		    "type": "STRING",
+		    "mode": "NULLABLE"
+		    }
+	   ]
+	},
+	{
+		"description": "Unique numeric identifier",
+		"name": "id",
+		"type": "INTEGER",
+		"mode": "NULLABLE"
+	},
+    {
+		"description": "Member who posted the comment",
+		"name": "member",
+		"type": "RECORD",
+		"mode": "REPEATED",
+		"fields": [
+			{
+			   "description": "Unique numeric id",
+			   "name": "member_id",
+			   "type": "INTEGER",
+			   "mode": "NULLABLE"
+			},
+			{
+			   "description": "Full name given",
+			   "name": "member_name",
+			   "type": "STRING",
+			   "mode": "NULLABLE"
+			},
+			{
+			   "description": "If available, the photo of the member posting the comment",
+			   "name": "photo",
+			   "type": "STRING",
+			   "mode": "NULLABLE"
+			}
+		]
+	},
+	{
+		"description": "Last modified time of this event comment, in milliseconds since the epoch",
+		"name": "mtime",
+		"type": "INTEGER",
+		"mode": "NULLABLE"
+	},
+	{
+		"description": "Set to 'active' or 'deleted'. Comments are republished to the stream when members delete them, so that apps may update their local comment display.",
+		"name": "status",
+		"type": "STRING",
+		"mode": "NULLABLE"
+	}
+]
