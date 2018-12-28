@@ -1,0 +1,74 @@
+[
+	{
+		"description": "If available, the first address line of the venue",
+		"name": "address_1",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "If available, the second address line of the venue",
+		"name": "address_2",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "If available, the third address line of the venue",
+		"name": "address_3",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "If available, the name of the venue's city",
+		"name": "city",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "If available, the name of the venue's country code",
+		"name": "country",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "ID of the venue",
+		"name": "id",
+		"type": "INTEGER",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "If available, the venue's latitude",
+		"name": "lat",
+		"type": "FLOAT",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "If available, the venue's longitude",
+		"name": "lon",
+		"type": "FLOAT",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "If available, the venue's name",
+		"name": "name",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "If available, the venue's phone number",
+		"name": "phone",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "If available and the venue's country is within the US or Canada, the venue's state",
+		"name": "state",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    },
+	{
+		"description": "If available, the venue's zipcode",
+		"name": "zip",
+		"type": "STRING",
+		"mode": "NULLABLE"
+    }
+]

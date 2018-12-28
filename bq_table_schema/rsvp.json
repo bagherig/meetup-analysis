@@ -1,0 +1,274 @@
+[
+ {
+   "description": "Event for the RSVP",
+   "name": "event",
+   "type": "RECORD",
+   "mode": "REPEATED",
+   "fields": [
+			   {
+			   "description": "Unique alphanumeric identifier",
+			   "name": "event_id",
+			   "type": "STRING",
+			   "mode": "NULLABLE"
+				},
+				{
+			   "description": "Name of the event",
+			   "name": "event_name",
+			   "type": "STRING",
+			   "mode": "NULLABLE"
+				},
+				{
+			   "description": "URL to the full event page",
+			   "name": "event_url",
+			   "type": "STRING",
+			   "mode": "NULLABLE"
+				},
+				{
+			   "description": "Event time if set in milliseconds since the epoch",
+			   "name": "time",
+			   "type": "INTEGER",
+			   "mode": "NULLABLE"
+				}
+   ]
+ },
+  {
+   "description": "Group hosting the event",
+   "name": "group",
+   "type": "RECORD",
+   "mode": "REPEATED",
+   "fields": [
+			   {
+			   "description": "Group's home city",
+			   "name": "group_city",
+			   "type": "STRING",
+			   "mode": "NULLABLE"
+				},
+				{
+			   "description": "two-letter code of group's home country",
+			   "name": "group_country",
+			   "type": "STRING",
+			   "mode": "NULLABLE"
+				},
+				{
+			   "description": "Numeric identifier of the group",
+			   "name": "group_id",
+			   "type": "INTEGER",
+			   "mode": "NULLABLE"
+			   }
+				,
+				{
+			   "description": "Latitude of group's approximate location",
+			   "name": "group_lat",
+			   "type": "FLOAT",
+			   "mode": "NULLABLE"
+				},
+				{
+			   "description": "Longitude of group's approximate location",
+			   "name": "group_lon",
+			   "type": "FLOAT",
+			   "mode": "NULLABLE"
+				},
+				{
+			   "description": "-",
+			   "name": "group_name",
+			   "type": "STRING",
+			   "mode": "NULLABLE"
+				},
+				{
+			   "description": "two-letter code of group's home state, if in US or CA",
+			   "name": "group_state",
+			   "type": "STRING",
+			   "mode": "NULLABLE"
+				},
+				{
+			   "description": "Topics associated with this group",
+			   "name": "group_topics",
+			   "type": "RECORD",
+			   "mode": "REPEATED",
+			   "fields": [
+						{
+						   "description": "Longer name",
+						   "name": "topic_name",
+						   "type": "STRING",
+						   "mode": "NULLABLE"
+						},
+						{
+						   "description": "Unique keyword",
+						   "name": "urlkey",
+						   "type": "STRING",
+						   "mode": "NULLABLE"
+						}
+			   ]},
+				{
+			   "description": "Unique portion of group's URL, no slashes",
+			   "name": "group_urlname",
+			   "type": "STRING",
+			   "mode": "NULLABLE"
+				}
+   ]
+ },
+ {
+   "description": "Number of guests the member is bringing",
+   "name": "guests",
+   "type": "INTEGER",
+   "mode": "NULLABLE"
+ },
+ {
+        "description": "Member who RSVP'd",
+		"name": "member",
+        "type": "RECORD",
+        "mode": "REPEATED",
+        "fields": [
+			{
+			   "description": "Unique numeric id",
+			   "name": "member_id",
+			   "type": "INTEGER",
+			   "mode": "NULLABLE"
+			},
+			{
+			   "description": "Full name given",
+			   "name": "member_name",
+			   "type": "STRING",
+			   "mode": "NULLABLE"
+			},
+			{
+			   "description": "e.g. {'twitter': {'identifier': 'MeetupAPI'}}",
+			   "name": "other_services",
+			   "type": "RECORD",
+			   "mode": "REPEATED",
+			   "fields": [
+					{
+					   "description": "Facebook",
+					   "name": "facebook",
+					   "type": "RECORD",
+					   "mode": "REPEATED",
+					   "fields": [
+							{
+							   "description": "Facebook Identifier",
+							   "name": "identifier",
+							   "type": "STRING",
+							   "mode": "NULLABLE"
+							}
+					   ]
+					},
+										{
+					   "description": "Flickr",
+					   "name": "flickr",
+					   "type": "RECORD",
+					   "mode": "REPEATED",
+					   "fields": [
+							{
+							   "description": "Flickr Identifier",
+							   "name": "identifier",
+							   "type": "STRING",
+							   "mode": "NULLABLE"
+							}
+					   ]
+					},
+										{
+					   "description": "Linkedin",
+					   "name": "linkedin",
+					   "type": "RECORD",
+					   "mode": "REPEATED",
+					   "fields": [
+							{
+							   "description": "Linkedin Identifier",
+							   "name": "identifier",
+							   "type": "STRING",
+							   "mode": "NULLABLE"
+							}
+					   ]
+					},
+										{
+					   "description": "Tumblr",
+					   "name": "tumblr",
+					   "type": "RECORD",
+					   "mode": "REPEATED",
+					   "fields": [
+							{
+							   "description": "Tumblr Identifier",
+							   "name": "identifier",
+							   "type": "STRING",
+							   "mode": "NULLABLE"
+							}
+					   ]
+					},
+										{
+					   "description": "Twitter",
+					   "name": "twitter",
+					   "type": "RECORD",
+					   "mode": "REPEATED",
+					   "fields": [
+							{
+							   "description": "Twitter Identifier",
+							   "name": "identifier",
+							   "type": "STRING",
+							   "mode": "NULLABLE"
+							}
+					   ]
+					}
+			   ]
+			},
+			{
+			   "description": "Thumbnail URL for member photo if one exists",
+			   "name": "photo",
+			   "type": "STRING",
+			   "mode": "NULLABLE"
+			}
+        ]
+    },
+ {
+        "description": "Venue, if public",
+		"name": "venue",
+        "type": "RECORD",
+        "mode": "REPEATED",
+        "fields": [
+			{
+			   "description": "Latitude of the venue",
+			   "name": "lat",
+			   "type": "FLOAT",
+			   "mode": "NULLABLE"
+			},
+			{
+			   "description": "Longitude of the venue",
+			   "name": "lon",
+			   "type": "FLOAT",
+			   "mode": "NULLABLE"
+			},
+			{
+			   "description": "Unique numeric identifier",
+			   "name": "venue_id",
+			   "type": "INTEGER",
+			   "mode": "NULLABLE"
+			},
+			{
+			   "description": "-",
+			   "name": "venue_name",
+			   "type": "STRING",
+			   "mode": "NULLABLE"
+			}
+        ]
+    }
+,
+{
+   "description": "Last modified time of this RSVP, in milliseconds since the epoch",
+   "name": "mtime",
+   "type": "INTEGER",
+   "mode": "NULLABLE"
+}
+,
+{
+   "description": "yes or no",
+   "name": "response",
+   "type": "STRING",
+   "mode": "NULLABLE"
+}
+,
+{
+   "description": "Unique numeric identifier",
+   "name": "rsvp_id",
+   "type": "INTEGER",
+   "mode": "NULLABLE"
+}
+]
+
