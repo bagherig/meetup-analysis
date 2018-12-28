@@ -3,15 +3,10 @@ import requests
 import os
 import datetime
 import threading
-from requests.exceptions import ChunkedEncodingError
+from requests.exceptions import ChunkedEncodingError, ConnectionError, ConnectTimeout
 
 from google.cloud import storage
 from google.cloud import logging
-
-
-class FailedToSaveError(Exception):
-    """Filed to save HTTP stream file to GCS"""
-    pass
 
 
 class HttpStream(object):
@@ -29,7 +24,7 @@ class HttpStream(object):
     def __read_stream(self):
         while True:
             try:
-                with requests.get(self.url, stream=True) as r:
+                with requests.get(self.url, headers={"User-Agent": "Mozilla/5.0"}, stream=True) as r:
                     for line in r.iter_lines():
                         if line:
                             decoded_line = line.decode('utf-8')
@@ -46,6 +41,7 @@ class HttpStream(object):
 
             for items in stream:
                 current_time = datetime.datetime.now().timestamp()
+                mtime = items["mtime"]
 
                 if prefix is None:
                     file_name = "file-{}.json".format(str(current_time))
@@ -55,11 +51,17 @@ class HttpStream(object):
                 try:
                     gcs_file = bucket.blob(file_name)
                     gcs_file.upload_from_string(json.dumps(items))
-                except FailedToSaveError:
+                except (ConnectionError, ConnectTimeout):
                     self.logger.log_text("Failed to save {} in {} at {}. ".format(file_name, gcs_bucket, datetime\
                                                                                   .datetime.now()\
                                                                                   .strftime('%Y-%m-%d %H:%M:%S')))
-                    pass
+                    url = self.url.split("?")[0]
+                    if url == "http://stream.meetup.com/2/open_venues":
+                        self.url = url + "?trickle&since_mtime={}".format(str(mtime))
+                    else:
+                        self.url = url + "?since_mtime={}".format(str(mtime))
+                    stream = self.__read_stream()
+                    continue
                 else:
                     self.logger.log_text("{} saved to {} at {}.".format(file_name, gcs_bucket, datetime.datetime.now()\
                                                                         .strftime('%Y-%m-%d %H:%M:%S')))
@@ -76,7 +78,7 @@ if __name__ == "__main__":
                                                      "event_comments"))
     t2 = threading.Thread(target=write_stream, args=("http://stream.meetup.com/2/open_events","meetup_data",
                                                      "open_events"))
-    t3 = threading.Thread(target=write_stream, args=("http://stream.meetup.com/2/open_venues","meetup_data",
+    t3 = threading.Thread(target=write_stream, args=("http://stream.meetup.com/2/open_venues?trickle","meetup_data",
                                                      "open_venues"))
     t4 = threading.Thread(target=write_stream, args=("http://stream.meetup.com/2/photos","meetup_data",
                                                      "photos"))
