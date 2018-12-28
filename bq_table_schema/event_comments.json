@@ -110,7 +110,7 @@
 		    {
 		    "description": "ID of group",
 		    "name": "id",
-		    "type": "INTEGER",
+		    "type": "STRING",
 		    "mode": "NULLABLE"
 		    },
 		    {
@@ -130,7 +130,7 @@
 	{
 		"description": "Unique numeric identifier",
 		"name": "id",
-		"type": "INTEGER",
+		"type": "STRING",
 		"mode": "NULLABLE"
 	},
     {
