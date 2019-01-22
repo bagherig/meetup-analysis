@@ -1,18 +1,20 @@
 #!/bin/bash
-# THE FOLLOWING COMMAND WILL CHANGE PERMISSION OF THIS FILE SO IT CAN BE RAN.
-# chmod 755 setup_google_cloud_vm.sh
-
 # SETUP THE REPOSITORY
-# sudo apt-get install git
+# sudo apt-get -y install git
 # git clone https://github.com/bagherig/meetup-analysis.git
+# cd meetup-analysis/scripts
 
-sudo apt-get update
-sudo apt-get upgrade
+# THE FOLLOWING COMMAND WILL CHANGE PERMISSION OF THE SHELL SCRIPT SO IT CAN BE RUN.
+# chmod 755 setup_google_cloud_vm.sh
+# THE FOLLOWING COMMAND WILL RUN THE SCRIPT.
+# ./setup_google_cloud_vm.sh
+sudo apt-get -y update
+sudo apt-get -y upgrade
 
-sudo apt-get install tmux
+sudo apt-get -y install tmux
 
 # SETUP ANACONDA
-sudo apt-get install bzip2
+sudo apt-get -y install bzip2
 cd /tmp
 curl -O https://repo.continuum.io/archive/Anaconda3-2018.12-Linux-x86_64.sh
 bash Anaconda3-2018.12-Linux-x86_64.sh
