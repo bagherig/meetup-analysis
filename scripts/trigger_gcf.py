@@ -6,13 +6,12 @@ import linecache
 import threading
 import urllib.parse as urlparse
 from google.cloud import logging
+from google.auth.exceptions import DefaultCredentialsError
 from urllib.parse import urlencode
 from typing import Generator, List
 from custom_typing import Logger
 
-AUTH = False  # Whether it is needed to authenticate google
-# service account. This would be unnecessary on google-cloud VM's.
-TEST = True  # Whether we are running in test mode.
+TEST = False  # Whether we are running in test mode.
 BUCKET_NAME = "meetup_stream_data"
 if TEST:
     # noinspection PyRedeclaration
@@ -52,8 +51,6 @@ class HttpStream(object):
         self.http = http_url
         self.bucket_name = bucket_name
         self.prefix = prefix
-        # Connect to google-cloud stackdriver logging.
-        self.logger = connect_gcl(f"{prefix}-Logger")
 
     def __read_stream(self) -> Generator[dict, None, None]:
         """
@@ -64,12 +61,12 @@ class HttpStream(object):
         mtime = None  # Variable for storing the timestamp of the last data
         # streamed.
         while True:
-            print(f"Reading {self.prefix} stream...\n")
+            print(f"Reading {self.prefix} stream...", flush=True)
             url = self.url
             if mtime:  # This is not None if the stream has been interrupted
                 # by an exception, after starting.
                 new_params = {'since_mtime': mtime}
-                add_url_params(url, new_params, self.logger)
+                add_url_params(url, new_params)
             try:
                 with requests.get(url, stream=True) as r:
                     for line in r.iter_lines():
@@ -85,8 +82,8 @@ class HttpStream(object):
                               'stream_url': url}
                 log_struct.update(get_exc_info_struct())
                 # noinspection PyTypeChecker
-                self.logger.log_struct(log_struct, severity='EMERGENCY')
-                print(f"Error while reading stream: {log_struct}")
+                MAIN_LOGGER.log_struct(log_struct, severity='EMERGENCY')
+                print(f"Error while reading stream: {log_struct}", flush=True)
                 continue
 
     # noinspection PyTypeChecker
@@ -96,10 +93,6 @@ class HttpStream(object):
         request contains the last data streamed, as well as the GCS bucket
         name.
         """
-        # Check if Stackdriver-Logging is connected.
-        if self.logger is None:
-            self.logger = connect_gcl(f"{self.prefix}-Logger")
-
         while True:
             stream = self.__read_stream()  # The stream generator.
             for item in stream:
@@ -114,62 +107,59 @@ class HttpStream(object):
                     log_struct = {'desc': 'Error while triggering GCF.',
                                   'gcf_url': http_url}
                     log_struct.update(get_exc_info_struct())
-                    self.logger.log_struct(log_struct, severity='EMERGENCY')
-                    print(f"Error while triggering gcf. {log_struct}")
+                    MAIN_LOGGER.log_struct(log_struct, severity='EMERGENCY')
+                    print(f"Error while triggering gcf. {log_struct}",
+                          flush=True)
                     continue
 
 
-def connect_gcl(logger_name: str = "Trigger_GCF-Logger",
-                auth: bool=AUTH) -> Logger:
+def connect_gcl(logger_name: str = "Trigger_GCF-Logger") -> Logger:
     """
     Sets the ``GOOGLE_APPLICATION_CREDENTIALS`` environmental variable for
     connecting to Stackdriver-Logging and initiates a new logger with name
     **logger_name**.
 
-    :param auth:
     :param logger_name: The name of the logger.
     :return: A Stackdriver Logger.
 
     .. note:: A google credentials file should exist in the current
     directory with the name ``meetup-analysis.json``.
     """
-    if auth:
+    print(f"Connecting {logger_name}...", flush=True)
+
+    try:
+        logging_client = logging.Client()
+    except DefaultCredentialsError:
         google_env_var = "GOOGLE_APPLICATION_CREDENTIALS"
         credentials_path = os.path.join(os.getcwd(), 'meetup-analysis.json')
         if os.environ.get(google_env_var) is None:
-            print("Connecting to GCS...")
             if os.path.exists(credentials_path):
                 os.environ[google_env_var] = credentials_path
-                print("Found google credentials.")
+                print("Found google credentials.", flush=True)
             else:
                 raise FileNotFoundError(
                     f'Could not find environmental variable [{google_env_var}]'
                     f' or the credentials file [{credentials_path}]')
+        logging_client = logging.Client()
 
-    logging_client = logging.Client()
     logger = logging_client.logger(logger_name)  # Initiate a new logger.
 
     return logger
 
 
 def add_url_params(url: str,
-                   params: dict,
-                   logger: Logger=None) -> str:
+                   params: dict) -> str:
     """
     Returns a new URL from **url** containing the URL parameters **params**.
 
     :param url: The url to add parameters to.
     :param params: The URL parameters to add. This should be a dictionary.
-    :param logger: Optional parameter for specifying a Stackdriver Logger
-        for reporting possible exceptions.
     :return: A string representing the new URL containing the URL parameters
         param.
 
     .. note:: The parameter **url** can have existing URL parameters.
     """
     new_url = url
-    if not logger:  # Create a logger if one is not provided.
-        logger = connect_gcl()
 
     try:
         # Add the new parameters to the URL.
@@ -186,8 +176,8 @@ def add_url_params(url: str,
             'params': params}
         log_struct.update(get_exc_info_struct())
         # noinspection PyTypeChecker
-        logger.log_struct(log_struct, severity='ERROR')
-        print(f'Error while adding URL params.')
+        MAIN_LOGGER.log_struct(log_struct, severity='ERROR')
+        print(f'Error while adding URL params.', flush=True)
 
     return new_url
 
@@ -230,7 +220,7 @@ def save_data(stream_urls: List[str],
     :param bucket_name: The name of the google cloud storage
         bucket for storing stream data.
     """
-    print("Connecting to data streams...")
+    print("Connecting to data streams...", flush=True)
     threads = []
     for url in stream_urls:
         prefix = url.split('/')[-1].split('?')[0]  # Set the prefix to be
@@ -277,11 +267,11 @@ def get_exc_info_struct() -> dict:
 
 
 if __name__ == "__main__":
-    MAIN_LOGGER = connect_gcl()
+    MAIN_LOGGER = connect_gcl()  # Connect to google-cloud stackdriver logging.
     save_data(stream_urls=URLS,
               http_url=HTTP_URL,
               bucket_name=BUCKET_NAME)
 
-    print("trigger_gcf.py is exiting!!!")
+    print("trigger_gcf.py is exiting!!!", flush=True)
     # noinspection PyTypeChecker
     MAIN_LOGGER.log_text("trigger_gcf.py is exiting!!!", severity='EMERGENCY')
