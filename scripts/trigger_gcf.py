@@ -8,7 +8,7 @@ import urllib.parse as urlparse
 from google.cloud import logging
 from urllib.parse import urlencode
 from typing import Generator, List
-from scripts.custom_typing import Logger
+from custom_typing import Logger
 
 
 class HttpStream(object):
