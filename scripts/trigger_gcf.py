@@ -10,6 +10,23 @@ from urllib.parse import urlencode
 from typing import Generator, List
 from custom_typing import Logger
 
+AUTH = False  # Whether it is needed to authenticate google
+# service account. This would be unnecessary on google-cloud VM's.
+TEST = True  # Whether we are running in test mode.
+BUCKET_NAME = "meetup_stream_data"
+if TEST:
+    # noinspection PyRedeclaration
+    BUCKET_NAME = "meetup_test"
+    print("TEST MODE")
+MAIN_LOGGER = None
+HTTP_URL = \
+    'https://us-central1-meetup-analysis.cloudfunctions.net/save_data'
+URLS = ["http://stream.meetup.com/2/event_comments",
+        "http://stream.meetup.com/2/open_events",
+        "http://stream.meetup.com/2/open_venues?trickle",
+        "http://stream.meetup.com/2/photos",
+        "http://stream.meetup.com/2/rsvps"]
+
 
 class HttpStream(object):
     """
@@ -102,29 +119,32 @@ class HttpStream(object):
                     continue
 
 
-def connect_gcl(logger_name: str = "Trigger_GCF-Logger") -> Logger:
+def connect_gcl(logger_name: str = "Trigger_GCF-Logger",
+                auth: bool=AUTH) -> Logger:
     """
     Sets the ``GOOGLE_APPLICATION_CREDENTIALS`` environmental variable for
     connecting to Stackdriver-Logging and initiates a new logger with name
     **logger_name**.
 
+    :param auth:
     :param logger_name: The name of the logger.
     :return: A Stackdriver Logger.
 
     .. note:: A google credentials file should exist in the current
     directory with the name ``meetup-analysis.json``.
     """
-    google_env_var = "GOOGLE_APPLICATION_CREDENTIALS"
-    credentials_path = os.path.join(os.getcwd(), 'meetup-analysis.json')
-    if os.environ.get(google_env_var) is None:
-        print("Connecting to GCS...")
-        if os.path.exists(credentials_path):
-            os.environ[google_env_var] = credentials_path
-            print("Found google credentials.")
-        else:
-            raise FileNotFoundError(
-                f'Could not find environmental variable [{google_env_var}] '
-                f'or the credentials file [{credentials_path}]')
+    if auth:
+        google_env_var = "GOOGLE_APPLICATION_CREDENTIALS"
+        credentials_path = os.path.join(os.getcwd(), 'meetup-analysis.json')
+        if os.environ.get(google_env_var) is None:
+            print("Connecting to GCS...")
+            if os.path.exists(credentials_path):
+                os.environ[google_env_var] = credentials_path
+                print("Found google credentials.")
+            else:
+                raise FileNotFoundError(
+                    f'Could not find environmental variable [{google_env_var}]'
+                    f' or the credentials file [{credentials_path}]')
 
     logging_client = logging.Client()
     logger = logging_client.logger(logger_name)  # Initiate a new logger.
@@ -247,22 +267,7 @@ def get_exc_info_struct() -> dict:
 
 
 if __name__ == "__main__":
-    TEST = True  # Whether we are running in test mode.
-    BUCKET_NAME = "meetup_stream_data"
-    if TEST:
-        # noinspection PyRedeclaration
-        BUCKET_NAME = "meetup_test"
-        print("TEST MODE")
-
     MAIN_LOGGER = connect_gcl()
-    HTTP_URL = \
-        'https://us-central1-meetup-analysis.cloudfunctions.net/save_data'
-    URLS = ["http://stream.meetup.com/2/event_comments",
-            "http://stream.meetup.com/2/open_events",
-            "http://stream.meetup.com/2/open_venues?trickle",
-            "http://stream.meetup.com/2/photos",
-            "http://stream.meetup.com/2/rsvps"]
-
     save_data(stream_urls=URLS,
               http_url=HTTP_URL,
               bucket_name=BUCKET_NAME)
