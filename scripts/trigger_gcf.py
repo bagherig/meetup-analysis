@@ -220,7 +220,9 @@ def save_data(stream_urls: List[str],
     """
     Creates a thread for each url in **stream_urls** and calls the
     ``write_stream`` function to save stream data in a GCS bucket named
-    **bucket_name**, by triggering an http-triggered GCF with url **http_url**.
+    **bucket_name**, by triggering an http-triggered GCF with url
+    **http_url**. The function waits for all threads to finish before
+    exiting.
 
     :param stream_urls: The URLs to stream.
     :param http_url: The URL of the google cloud function to
@@ -229,11 +231,19 @@ def save_data(stream_urls: List[str],
         bucket for storing stream data.
     """
     print("Connecting to data streams...")
+    threads = []
     for url in stream_urls:
         prefix = url.split('/')[-1].split('?')[0]  # Set the prefix to be
         # the last path in the URL.
-        threading.Thread(target=write_stream,
-                         args=(url, http_url, bucket_name, prefix)).start()
+        threads.append(
+            threading.Thread(
+                target=write_stream,
+                args=(url, http_url, bucket_name, prefix))
+        )
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
 
 
 def get_exc_info_struct() -> dict:
