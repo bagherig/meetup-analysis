@@ -89,7 +89,7 @@ def get_exc_info_struct() -> dict:
 
 def attempt_api_call(api_call: Callable,
                      num_attempts: int = 5,
-                     sleep_time: int = 500,
+                     sleep_time: float = 1,
                      ignored_exceptions: Tuple[Exception]=(),
                      ) -> Tuple[Any, bool]:
     """
@@ -101,7 +101,7 @@ def attempt_api_call(api_call: Callable,
 
     :param api_call: A Callable object to call.
     :param num_attempts: The number of attempts for calling api_call.
-    :param sleep_time: The number of milliseconds to wait before each
+    :param sleep_time: The number of seconds to wait before each
         reattempt.
     :param ignored_exceptions: A tuple of Exceptions. If these
         exceptions are thrown, api_call is not reattempted.
