@@ -5,9 +5,9 @@ import requests
 import linecache
 import threading
 import urllib.parse as urlparse
-from typing import Generator
 from google.cloud import logging
 from urllib.parse import urlencode
+from typing import Generator, List
 from scripts.custom_typing import Logger
 
 
@@ -16,17 +16,20 @@ class HttpStream(object):
     A class for streaming meetup data and triggering a google cloud
     function for storing the data in GCS.
     """
-    def __init__(self, stream_url, http_url, bucket_name, prefix='meetup'):
+    def __init__(self,
+                 stream_url: str,
+                 http_url: str,
+                 bucket_name: str,
+                 prefix: str='meetup'):
         """
-        initializes an instant of class HttpStream.
+        initializes an instant of class *HttpStream*.
 
         :param stream_url: The URL to stream.
-        :param http_url: The URL of the google cloud function to
-        trigger.
-        :param bucket_name: The name of the google cloud storage
-        bucket for storing stream data.
+        :param http_url: The URL of the google cloud function to trigger.
+        :param bucket_name: The name of the google cloud storage bucket
+            for storing stream data.
         :param prefix: A label for describing the type of data
-        that is being streamed.
+            that is being streamed.
         """
         self.url = stream_url
         self.http = http_url
@@ -35,7 +38,7 @@ class HttpStream(object):
         # Connect to google-cloud stackdriver logging.
         self.logger = connect_gcl(f"{prefix}-Logger")
 
-    def __read_stream(self) -> Generator[dict]:
+    def __read_stream(self) -> Generator[dict, None, None]:
         """
         Reads the stream with URL self.url.
 
@@ -44,7 +47,7 @@ class HttpStream(object):
         mtime = None  # Variable for storing the timestamp of the last data
         # streamed.
         while True:
-            print(f"Reading {self.prefix} stream...")
+            print(f"Reading {self.prefix} stream...\n")
             url = self.url
             if mtime:  # This is not None if the stream has been interrupted
                 # by an exception, after starting.
@@ -129,16 +132,18 @@ def connect_gcl(logger_name: str = "Trigger_GCF-Logger") -> Logger:
     return logger
 
 
-def add_url_params(url: str, params: dict, logger: Logger=None) -> str:
+def add_url_params(url: str,
+                   params: dict,
+                   logger: Logger=None) -> str:
     """
     Returns a new URL from **url** containing the URL parameters **params**.
 
     :param url: The url to add parameters to.
     :param params: The URL parameters to add. This should be a dictionary.
     :param logger: Optional parameter for specifying a Stackdriver Logger
-    for reporting possible exceptions.
+        for reporting possible exceptions.
     :return: A string representing the new URL containing the URL parameters
-    param.
+        param.
 
     .. note:: The parameter **url** can have existing URL parameters.
     """
@@ -167,17 +172,20 @@ def add_url_params(url: str, params: dict, logger: Logger=None) -> str:
     return new_url
 
 
-def write_stream(stream_url, http_url, bucket_name, prefix):
+def write_stream(stream_url: str,
+                 http_url: str,
+                 bucket_name: str,
+                 prefix: str):
     """
     Creates an instance of *HttpStream* and triggers its GCF.
 
     :param stream_url: The URL to stream.
     :param http_url: The URL of the google cloud function to
-    trigger.
+        trigger.
     :param bucket_name: The name of the google cloud storage
-    bucket for storing stream data.
+        bucket for storing stream data.
     :param prefix: A label for describing the type of data
-    that is being streamed.
+        that is being streamed.
     """
     meetup_stream = HttpStream(stream_url=stream_url,
                                http_url=http_url,
@@ -186,18 +194,21 @@ def write_stream(stream_url, http_url, bucket_name, prefix):
     meetup_stream.trigger_http_function()
 
 
-def save_data(stream_urls, http_url, bucket_name):
+def save_data(stream_urls: List[str],
+              http_url: str,
+              bucket_name: str):
     """
     Creates a thread for each url in **stream_urls** and calls the
     ``write_stream`` function to save stream data in a GCS bucket named
     **bucket_name**, by triggering an http-triggered GCF with url **http_url**.
+
     :param stream_urls: The URLs to stream.
     :param http_url: The URL of the google cloud function to
-    trigger.
+        trigger.
     :param bucket_name: The name of the google cloud storage
-    bucket for storing stream data.
+        bucket for storing stream data.
     """
-    print("Starting...")
+    print("Connecting to data streams...")
     for url in stream_urls:
         prefix = url.split('/')[-1].split('?')[0]  # Set the prefix to be
         # the last path in the URL.
@@ -211,7 +222,7 @@ def get_exc_info_struct() -> dict:
     currently being handled.
 
     :return: A dictionary containing information about the exception that is
-    currently being handled.
+        currently being handled.
     """
     exc_struct = {}
     exc_type, exc_obj, tb = sys.exc_info()
