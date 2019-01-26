@@ -10,6 +10,7 @@ from google.auth.exceptions import DefaultCredentialsError
 from urllib.parse import urlencode
 from typing import Generator, List
 from custom_typing import Logger
+from requests.exceptions import ChunkedEncodingError
 
 TEST = False  # Whether we are running in test mode.
 BUCKET_NAME = "meetup_stream_data"
@@ -61,12 +62,12 @@ class HttpStream(object):
         mtime = None  # Variable for storing the timestamp of the last data
         # streamed.
         while True:
-            print(f"Reading {self.prefix} stream...", flush=True)
             url = self.url
             if mtime:  # This is not None if the stream has been interrupted
                 # by an exception, after starting.
                 new_params = {'since_mtime': mtime}
                 add_url_params(url, new_params)
+            print(f"Reading {self.prefix} stream... {url}", flush=True)
             try:
                 with requests.get(url, stream=True) as r:
                     for line in r.iter_lines():
@@ -76,8 +77,14 @@ class HttpStream(object):
                             if mtime in json_data:  # Save timestamp of data.
                                 mtime = json_data['mtime']
                             yield json_data
-            except Exception:
+            except ChunkedEncodingError:
                 # Log exceptions to Stackdriver-Logging.
+                log_struct = {'desc': 'Chunked error while reading stream.',
+                              'stream_url': url}
+                log_struct.update(get_exc_info_struct())
+                # noinspection PyTypeChecker
+                MAIN_LOGGER.log_struct(log_struct, severity='WARNING')
+            except Exception:
                 log_struct = {'desc': 'Error while reading stream.',
                               'stream_url': url}
                 log_struct.update(get_exc_info_struct())
