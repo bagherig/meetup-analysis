@@ -66,7 +66,7 @@ class HttpStream(object):
             if mtime:  # This is not None if the stream has been interrupted
                 # by an exception, after starting.
                 new_params = {'since_mtime': mtime}
-                add_url_params(url, new_params)
+                url = add_url_params(url, new_params)
             print(f"Reading {self.prefix} stream... {url}", flush=True)
             try:
                 with requests.get(url, stream=True) as r:
@@ -83,7 +83,8 @@ class HttpStream(object):
                               'stream_url': url}
                 log_struct.update(get_exc_info_struct())
                 # noinspection PyTypeChecker
-                MAIN_LOGGER.log_struct(log_struct, severity='WARNING')
+                MAIN_LOGGER.log_struct(log_struct, severity='NOTICE')
+                print(f"Chunked error while reading stream: {log_struct}", flush=True)
             except Exception:
                 log_struct = {'desc': 'Error while reading stream.',
                               'stream_url': url}
