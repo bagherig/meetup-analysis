@@ -85,6 +85,7 @@ class HttpStream(object):
                 # noinspection PyTypeChecker
                 MAIN_LOGGER.log_struct(log_struct, severity='NOTICE')
                 print(f"Chunked error while reading stream: {log_struct}", flush=True)
+                continue
             except Exception:
                 log_struct = {'desc': 'Error while reading stream.',
                               'stream_url': url}
