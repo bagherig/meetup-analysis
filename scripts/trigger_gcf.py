@@ -5,10 +5,11 @@ import requests
 import linecache
 import threading
 import urllib.parse as urlparse
+from enum import Enum
 from google.cloud import logging
 from google.auth.exceptions import DefaultCredentialsError
 from urllib.parse import urlencode
-from typing import Generator, List
+from typing import Generator, List, Union
 from custom_typing import Logger
 from requests.exceptions import ChunkedEncodingError
 
@@ -17,7 +18,6 @@ BUCKET_NAME = "meetup_stream_data"
 if TEST:
     # noinspection PyRedeclaration
     BUCKET_NAME = "meetup_test"
-    print("TEST MODE")
 MAIN_LOGGER = None
 HTTP_URL = \
     'https://us-central1-meetup-analysis.cloudfunctions.net/save_data'
@@ -26,6 +26,42 @@ URLS = ["http://stream.meetup.com/2/event_comments",
         "http://stream.meetup.com/2/open_venues?trickle",
         "http://stream.meetup.com/2/photos",
         "http://stream.meetup.com/2/rsvps"]
+
+
+class BColors(Enum):
+    """
+    A list of color codes that can be used to format the color of text displayed in standard output.
+    """
+    TITLE = '\033[94m'
+    HEADER = '\033[95m'
+    OKBLUE = '\033[96m'
+    OKWHITE = '\033[98m'
+    WARNING = '\033[93m'
+    OKGREEN = '\033[92m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+def pprint(text: str,
+           pformat: Union[BColors, List[BColors], str]=BColors.OKWHITE
+           ) -> None:
+    """
+    Pretty prints the text in the specified format.
+
+    :param text: the text to be printed.
+    :param pformat: the format of the text.
+    """
+    style = ''
+    if isinstance(pformat, str):
+        style = getattr(BColors, pformat.upper())
+    elif isinstance(pformat, list):
+        for fmt in pformat:
+            style += fmt.value
+    else:
+        style = pformat.value
+    print(style + text + BColors.ENDC.value, flush=True)
 
 
 class HttpStream(object):
@@ -67,14 +103,14 @@ class HttpStream(object):
                 # by an exception, after starting.
                 new_params = {'since_mtime': mtime}
                 url = add_url_params(url, new_params)
-            print(f"Reading {self.prefix} stream... {url}", flush=True)
+            pprint(f"Reading {self.prefix} stream... {url}")
             try:
                 with requests.get(url, stream=True) as r:
                     for line in r.iter_lines():
                         if line:
                             # The data is coming in JSON format.
                             json_data = json.loads(line.decode('utf-8'))
-                            if mtime in json_data:  # Save timestamp of data.
+                            if 'mtime' in json_data:  # Save timestamp of data.
                                 mtime = json_data['mtime']
                             yield json_data
             except ChunkedEncodingError:
@@ -82,17 +118,19 @@ class HttpStream(object):
                 log_struct = {'desc': 'Chunked error while reading stream.',
                               'stream_url': url}
                 log_struct.update(get_exc_info_struct())
+                pprint(f"Chunked error while reading stream.",
+                       pformat=BColors.FAIL)
                 # noinspection PyTypeChecker
                 MAIN_LOGGER.log_struct(log_struct, severity='NOTICE')
-                print(f"Chunked error while reading stream: {log_struct}", flush=True)
                 continue
             except Exception:
                 log_struct = {'desc': 'Error while reading stream.',
                               'stream_url': url}
                 log_struct.update(get_exc_info_struct())
+                pprint(f"Error while reading stream: {log_struct}",
+                       pformat=BColors.FAIL)
                 # noinspection PyTypeChecker
                 MAIN_LOGGER.log_struct(log_struct, severity='EMERGENCY')
-                print(f"Error while reading stream: {log_struct}", flush=True)
                 continue
 
     # noinspection PyTypeChecker
@@ -117,8 +155,8 @@ class HttpStream(object):
                                   'gcf_url': http_url}
                     log_struct.update(get_exc_info_struct())
                     MAIN_LOGGER.log_struct(log_struct, severity='EMERGENCY')
-                    print(f"Error while triggering gcf. {log_struct}",
-                          flush=True)
+                    pprint(f"Error while triggering gcf. {log_struct}",
+                           pformat=BColors.FAIL)
                     continue
 
 
@@ -134,7 +172,7 @@ def connect_gcl(logger_name: str = "Trigger_GCF-Logger") -> Logger:
     .. note:: A google credentials file should exist in the current
     directory with the name ``meetup-analysis.json``.
     """
-    print(f"Connecting {logger_name}...", flush=True)
+    pprint(f"Initiating {logger_name}...")
 
     try:
         logging_client = logging.Client()
@@ -144,7 +182,7 @@ def connect_gcl(logger_name: str = "Trigger_GCF-Logger") -> Logger:
         if os.environ.get(google_env_var) is None:
             if os.path.exists(credentials_path):
                 os.environ[google_env_var] = credentials_path
-                print("Found google credentials.", flush=True)
+                pprint("Found google credentials.", pformat=BColors.OKGREEN)
             else:
                 raise FileNotFoundError(
                     f'Could not find environmental variable [{google_env_var}]'
@@ -186,7 +224,7 @@ def add_url_params(url: str,
         log_struct.update(get_exc_info_struct())
         # noinspection PyTypeChecker
         MAIN_LOGGER.log_struct(log_struct, severity='ERROR')
-        print(f'Error while adding URL params.', flush=True)
+        pprint(f'Error while adding URL params.', pformat=BColors.FAIL)
 
     return new_url
 
@@ -229,7 +267,7 @@ def save_data(stream_urls: List[str],
     :param bucket_name: The name of the google cloud storage
         bucket for storing stream data.
     """
-    print("Connecting to data streams...", flush=True)
+    pprint("Connecting to data streams...")
     threads = []
     for url in stream_urls:
         prefix = url.split('/')[-1].split('?')[0]  # Set the prefix to be
@@ -276,11 +314,14 @@ def get_exc_info_struct() -> dict:
 
 
 if __name__ == "__main__":
+    pprint("Starting...", pformat=[BColors.TITLE, BColors.BOLD])
+    if TEST:
+        pprint("TEST MODE", pformat=[BColors.UNDERLINE, BColors.OKBLUE])
     MAIN_LOGGER = connect_gcl()  # Connect to google-cloud stackdriver logging.
     save_data(stream_urls=URLS,
               http_url=HTTP_URL,
               bucket_name=BUCKET_NAME)
 
-    print("trigger_gcf.py is exiting!!!", flush=True)
+    pprint("trigger_gcf.py is exiting!!!", pformat=BColors.WARNING)
     # noinspection PyTypeChecker
     MAIN_LOGGER.log_text("trigger_gcf.py is exiting!!!", severity='EMERGENCY')
