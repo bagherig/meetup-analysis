@@ -48,15 +48,16 @@ class BColors(Enum):
 
 
 def pprint(text: str,
-           pformat: Union[BColors, List[BColors], str] = BColors.OKWHITE
-           ) -> None:
+           pformat: Union[BColors, List[BColors], str] = BColors.OKWHITE,
+           timestamp: bool=True) -> None:
     """
     Pretty prints the text in the specified format.
 
     :param text: the text to be printed.
     :param pformat: the format of the text.
+    :param timestamp: Whether to add a timestamp to the beginning of text.
     """
-    style = ''
+    style = output = ""
     if isinstance(pformat, str):
         style = getattr(BColors, pformat.upper())
     elif isinstance(pformat, list):
@@ -64,13 +65,16 @@ def pprint(text: str,
             style += fmt.value
     else:
         style = pformat.value
-    now = datetime.datetime.now().strftime('%b %d, %H:%M:%S')
-    timestamp_style = BColors.UNDERLINE.value + \
-                      BColors.BOLD.value + \
-                      BColors.HEADER.value
-    print(timestamp_style + now + BColors.ENDC.value +
-          " — " + style + text + BColors.ENDC.value,
-          flush=True)
+
+    if timestamp:
+        now = datetime.datetime.now().strftime('%b %d, %H:%M:%S')
+        timestamp_style = BColors.UNDERLINE.value + \
+                          BColors.BOLD.value + \
+                          BColors.HEADER.value
+        output += timestamp_style + now + BColors.ENDC.value + " — "
+    output += style + text + BColors.ENDC.value
+
+    print(output, flush=True)
 
 
 class HttpStream(object):
@@ -134,12 +138,12 @@ class HttpStream(object):
                 MAIN_LOGGER.log_struct(log_struct, severity='NOTICE')
                 continue
             except Exception:
-                pprint(f"Error while reading stream:\n"
-                       f"{json.dumps(log_struct, indent=4)}",
-                       pformat=BColors.FAIL)
                 log_struct = {'desc': 'Error while reading stream.',
                               'stream_url': url}
                 log_struct.update(get_exc_info_struct())
+                pprint(f"Error while reading stream:\n"
+                       f"{json.dumps(log_struct, indent=4)}",
+                       pformat=BColors.FAIL)
                 # noinspection PyTypeChecker
                 MAIN_LOGGER.log_struct(log_struct, severity='EMERGENCY')
                 continue
@@ -161,13 +165,13 @@ class HttpStream(object):
                     http_url = add_url_params(self.http, params)
                     requests.post(http_url, json=item)
                 except Exception:
-                    pprint(f"Error while triggering gcf.\n"
-                           f"{json.dumps(log_struct, indent=4)}",
-                           pformat=BColors.FAIL)
                     # Log exceptions to Stackdriver-Logging.
                     log_struct = {'desc': 'Error while triggering GCF.',
                                   'gcf_url': http_url}
                     log_struct.update(get_exc_info_struct())
+                    pprint(f"Error while triggering gcf.\n"
+                           f"{json.dumps(log_struct, indent=4)}",
+                           pformat=BColors.FAIL)
                     MAIN_LOGGER.log_struct(log_struct, severity='EMERGENCY')
                     continue
 
@@ -228,18 +232,17 @@ def add_url_params(url: str,
         url_parts = url_parts._replace(query=urlencode(query))
         new_url = urlparse.urlunparse(url_parts)
     except Exception:
-        pprint(f'Error while adding URL params.\n'
-               f'{json.dumps(log_struct, indent=4)}',
-               pformat=BColors.WARNING)
         # Log exceptions to Stackdriver-Logging.
         log_struct = {
             'desc': 'Error while adding URL params.',
             'url': url,
             'params': params}
         log_struct.update(get_exc_info_struct())
+        pprint(f'Error while adding URL params.\n'
+               f'{json.dumps(log_struct, indent=4)}',
+               pformat=BColors.WARNING)
         # noinspection PyTypeChecker
         MAIN_LOGGER.log_struct(log_struct, severity='ERROR')
-
 
     return new_url
 
@@ -321,7 +324,7 @@ def save_data(stream_urls: List[str],
     :param bucket_name: The name of the google cloud storage
         bucket for storing stream data.
     """
-    pprint("Connecting to data streams...")
+    pprint("Connecting to data streams...", timestamp=False)
     threads = []
     for url in stream_urls:
         prefix = url.split('/')[-1].split('?')[0]  # Set the prefix to be
@@ -338,9 +341,11 @@ def save_data(stream_urls: List[str],
 
 
 if __name__ == "__main__":
-    pprint("Starting...", pformat=[BColors.TITLE, BColors.BOLD])
+    pprint("Starting...", pformat=[BColors.TITLE, BColors.BOLD],
+           timestamp=False)
     if TEST:
-        pprint("TEST MODE", pformat=[BColors.UNDERLINE, BColors.OKBLUE])
+        pprint("TEST MODE", pformat=[BColors.UNDERLINE, BColors.OKBLUE],
+               timestamp=False)
     MAIN_LOGGER = connect_gcl()  # Connect to google-cloud stackdriver logging.
     save_data(stream_urls=URLS,
               http_url=HTTP_URL,
