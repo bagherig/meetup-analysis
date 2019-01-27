@@ -1,5 +1,6 @@
 import os
 import sys
+import pytz
 import json
 import datetime
 import requests
@@ -49,13 +50,15 @@ class BColors(Enum):
 
 def pprint(text: str,
            pformat: Union[BColors, List[BColors], str] = BColors.OKWHITE,
-           timestamp: bool=True) -> None:
+           timestamp: bool=True,
+           timezone: pytz.tzfile = pytz.timezone('US/Eastern')) -> None:
     """
     Pretty prints the text in the specified format.
 
     :param text: the text to be printed.
     :param pformat: the format of the text.
     :param timestamp: Whether to add a timestamp to the beginning of text.
+    :param timezone: The timezone of timestamp, if timestamp is True.
     """
     style = output = ""
     if isinstance(pformat, str):
@@ -67,11 +70,12 @@ def pprint(text: str,
         style = pformat.value
 
     if timestamp:
-        now = datetime.datetime.now().strftime('%b %d, %H:%M:%S')
+        now = datetime.datetime.now()
+        local_now = timezone.localize(now).strftime('%b %d, %H:%M:%S')
         timestamp_style = BColors.UNDERLINE.value + \
                           BColors.BOLD.value + \
                           BColors.HEADER.value
-        output += timestamp_style + now + BColors.ENDC.value + " — "
+        output += timestamp_style + local_now + BColors.ENDC.value + " — "
     output += style + text + BColors.ENDC.value
 
     print(output, flush=True)
@@ -324,7 +328,7 @@ def save_data(stream_urls: List[str],
     :param bucket_name: The name of the google cloud storage
         bucket for storing stream data.
     """
-    pprint("Connecting to data streams...", timestamp=False)
+    pprint("Connecting to data streams...")
     threads = []
     for url in stream_urls:
         prefix = url.split('/')[-1].split('?')[0]  # Set the prefix to be
