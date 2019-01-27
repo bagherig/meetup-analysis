@@ -81,8 +81,6 @@ class MeetupStream(object):
                                 self.mtime = json_data['mtime']
                             yield json_data
             except ChunkedEncodingError:
-                pprint(f"Chunked error while reading stream.",
-                       pformat=BColors.WARNING)
                 # Log exceptions to Stackdriver-Logging.
                 log_struct = {'desc': 'Chunked error while reading stream.',
                               'stream_url': url}
