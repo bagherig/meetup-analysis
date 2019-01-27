@@ -347,7 +347,7 @@ def save_data(stream_urls: List[str],
 
 
 if __name__ == "__main__":
-    pprint("Starting...", pformat=[BColors.TITLE, BColors.BOLD],
+    pprint("——— Starting ———", pformat=[BColors.TITLE, BColors.BOLD],
            timestamp=False)
     if TEST:
         pprint("TEST MODE", pformat=[BColors.UNDERLINE, BColors.OKBLUE],
