@@ -70,12 +70,13 @@ def pprint(text: str,
         style = pformat.value
 
     if timestamp:
-        now = datetime.datetime.now()
-        local_now = timezone.localize(now).strftime('%b %d, %H:%M:%S')
+        ref_now = pytz.utc.localize(datetime.datetime.utcnow())
+        local_now = ref_now.astimezone(timezone)
+        now_str = local_now.strftime('%b %d, %H:%M:%S')
         timestamp_style = BColors.UNDERLINE.value + \
                           BColors.BOLD.value + \
                           BColors.HEADER.value
-        output += timestamp_style + local_now + BColors.ENDC.value + " — "
+        output += timestamp_style + now_str + BColors.ENDC.value + " — "
     output += style + text + BColors.ENDC.value
 
     print(output, flush=True)
