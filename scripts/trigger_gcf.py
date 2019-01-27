@@ -2,6 +2,7 @@ import os
 import sys
 import pytz
 import json
+import time
 import datetime
 import requests
 import linecache
@@ -29,6 +30,105 @@ URLS = ["http://stream.meetup.com/2/event_comments",
         "http://stream.meetup.com/2/open_venues?trickle",
         "http://stream.meetup.com/2/photos",
         "http://stream.meetup.com/2/rsvps"]
+
+
+class MeetupStream(object):
+    """
+    A class for streaming meetup data and triggering a google cloud
+    function for storing the data in GCS.
+    """
+    def __init__(self,
+                 stream_url: str,
+                 http_url: str,
+                 bucket_name: str,
+                 prefix: str = 'meetup'):
+        """
+        Initializes an instant of class *HttpStream*.
+
+        :param stream_url: The URL to stream.
+        :param http_url: The URL of the google cloud function to trigger.
+        :param bucket_name: The name of the google cloud storage bucket
+            for storing stream data.
+        :param prefix: A label for describing the type of data
+            that is being streamed.
+        """
+        self.url = stream_url
+        self.http = http_url
+        self.bucket_name = bucket_name
+        self.prefix = prefix
+        self.mtime = None  # Stores the timestamp of the last data streamed.
+
+    def __read_stream(self) -> Generator[dict, None, None]:
+        """
+        Reads the stream with URL self.url.
+
+        :returns: The last data streamed from self.url.
+        """
+        while True:
+            url = self.url
+            if self.mtime:  # self.mtime is not None if the stream has been
+                # interrupted by an exception, after starting.
+                new_params = {'since_mtime': self.mtime}
+                url = add_url_params(url, new_params)
+            pprint(f"Reading {self.prefix} stream... {url}")
+            try:
+                with requests.get(url, stream=True) as r:
+                    for line in r.iter_lines():
+                        if line:
+                            # The data is coming in JSON format.
+                            json_data = json.loads(line.decode('utf-8'))
+                            if 'mtime' in json_data:  # Save timestamp of data.
+                                self.mtime = json_data['mtime']
+                            yield json_data
+            except ChunkedEncodingError:
+                pprint(f"Chunked error while reading stream.",
+                       pformat=BColors.WARNING)
+                # Log exceptions to Stackdriver-Logging.
+                log_struct = {'desc': 'Chunked error while reading stream.',
+                              'stream_url': url}
+                log_struct.update(get_exc_info_struct())
+                # noinspection PyTypeChecker
+                MAIN_LOGGER.log_struct(log_struct, severity='NOTICE')
+                time.sleep(0.5)
+                continue
+            except Exception:
+                log_struct = {'desc': 'Error while reading stream.',
+                              'stream_url': url}
+                log_struct.update(get_exc_info_struct())
+                pprint(f"Error while reading stream:\n"
+                       f"{json.dumps(log_struct, indent=4)}",
+                       pformat=BColors.FAIL)
+                # noinspection PyTypeChecker
+                MAIN_LOGGER.log_struct(log_struct, severity='EMERGENCY')
+                time.sleep(0.5)
+                continue
+
+    # noinspection PyTypeChecker
+    def trigger_http_function(self):
+        """
+        Triggers the GCF with url self.http with a POST request. Each POST
+        request contains the last data streamed, as well as the GCS bucket
+        name.
+        """
+        while True:
+            stream = self.__read_stream()  # The stream generator.
+            for item in stream:
+                http_url = None
+                try:
+                    params = {"label": self.prefix,
+                              "bucket_name": self.bucket_name}
+                    http_url = add_url_params(self.http, params)
+                    requests.post(http_url, json=item)
+                except Exception:
+                    # Log exceptions to Stackdriver-Logging.
+                    log_struct = {'desc': 'Error while triggering GCF.',
+                                  'gcf_url': http_url}
+                    log_struct.update(get_exc_info_struct())
+                    pprint(f"Error while triggering gcf.\n"
+                           f"{json.dumps(log_struct, indent=4)}",
+                           pformat=BColors.FAIL)
+                    MAIN_LOGGER.log_struct(log_struct, severity='EMERGENCY')
+                    continue
 
 
 class BColors(Enum):
@@ -80,105 +180,6 @@ def pprint(text: str,
     output += style + text + BColors.ENDC.value
 
     print(output, flush=True)
-
-
-class HttpStream(object):
-    """
-    A class for streaming meetup data and triggering a google cloud
-    function for storing the data in GCS.
-    """
-
-    def __init__(self,
-                 stream_url: str,
-                 http_url: str,
-                 bucket_name: str,
-                 prefix: str = 'meetup'):
-        """
-        initializes an instant of class *HttpStream*.
-
-        :param stream_url: The URL to stream.
-        :param http_url: The URL of the google cloud function to trigger.
-        :param bucket_name: The name of the google cloud storage bucket
-            for storing stream data.
-        :param prefix: A label for describing the type of data
-            that is being streamed.
-        """
-        self.url = stream_url
-        self.http = http_url
-        self.bucket_name = bucket_name
-        self.prefix = prefix
-
-    def __read_stream(self) -> Generator[dict, None, None]:
-        """
-        Reads the stream with URL self.url.
-
-        :returns: The last data streamed from self.url.
-        """
-        mtime = None  # Variable for storing the timestamp of the last data
-        # streamed.
-        while True:
-            url = self.url
-            if mtime:  # This is not None if the stream has been interrupted
-                # by an exception, after starting.
-                new_params = {'since_mtime': mtime}
-                url = add_url_params(url, new_params)
-            pprint(f"Reading {self.prefix} stream... {url}")
-            try:
-                with requests.get(url, stream=True) as r:
-                    for line in r.iter_lines():
-                        if line:
-                            # The data is coming in JSON format.
-                            json_data = json.loads(line.decode('utf-8'))
-                            if 'mtime' in json_data:  # Save timestamp of data.
-                                mtime = json_data['mtime']
-                            yield json_data
-            except ChunkedEncodingError:
-                pprint(f"Chunked error while reading stream.",
-                       pformat=BColors.WARNING)
-                # Log exceptions to Stackdriver-Logging.
-                log_struct = {'desc': 'Chunked error while reading stream.',
-                              'stream_url': url}
-                log_struct.update(get_exc_info_struct())
-                # noinspection PyTypeChecker
-                MAIN_LOGGER.log_struct(log_struct, severity='NOTICE')
-                continue
-            except Exception:
-                log_struct = {'desc': 'Error while reading stream.',
-                              'stream_url': url}
-                log_struct.update(get_exc_info_struct())
-                pprint(f"Error while reading stream:\n"
-                       f"{json.dumps(log_struct, indent=4)}",
-                       pformat=BColors.FAIL)
-                # noinspection PyTypeChecker
-                MAIN_LOGGER.log_struct(log_struct, severity='EMERGENCY')
-                continue
-
-    # noinspection PyTypeChecker
-    def trigger_http_function(self):
-        """
-        Triggers the GCF with url self.http with a POST request. Each POST
-        request contains the last data streamed, as well as the GCS bucket
-        name.
-        """
-        while True:
-            stream = self.__read_stream()  # The stream generator.
-            for item in stream:
-                http_url = None
-                try:
-                    params = {"label": self.prefix,
-                              "bucket_name": self.bucket_name}
-                    http_url = add_url_params(self.http, params)
-                    requests.post(http_url, json=item)
-                except Exception:
-                    # Log exceptions to Stackdriver-Logging.
-                    log_struct = {'desc': 'Error while triggering GCF.',
-                                  'gcf_url': http_url}
-                    log_struct.update(get_exc_info_struct())
-                    pprint(f"Error while triggering gcf.\n"
-                           f"{json.dumps(log_struct, indent=4)}",
-                           pformat=BColors.FAIL)
-                    MAIN_LOGGER.log_struct(log_struct, severity='EMERGENCY')
-                    continue
 
 
 def connect_gcl(logger_name: str = "Trigger_GCF-Logger") -> Logger:
@@ -306,10 +307,10 @@ def write_stream(stream_url: str,
     :param prefix: A label for describing the type of data
         that is being streamed.
     """
-    meetup_stream = HttpStream(stream_url=stream_url,
-                               http_url=http_url,
-                               bucket_name=bucket_name,
-                               prefix=prefix)
+    meetup_stream = MeetupStream(stream_url=stream_url,
+                                 http_url=http_url,
+                                 bucket_name=bucket_name,
+                                 prefix=prefix)
     meetup_stream.trigger_http_function()
 
 
