@@ -70,7 +70,7 @@ class MeetupStream(object):
                 # interrupted by an exception, after starting.
                 new_params = {'since_mtime': self.mtime}
                 url = add_url_params(url, new_params)
-            pprint(f"Reading {self.prefix} stream... {url}")
+            pprint(f"Reading {self.prefix} stream: {url}")
             try:
                 with requests.get(url, stream=True) as r:
                     for line in r.iter_lines():
@@ -89,7 +89,7 @@ class MeetupStream(object):
                 log_struct.update(get_exc_info_struct())
                 # noinspection PyTypeChecker
                 MAIN_LOGGER.log_struct(log_struct, severity='NOTICE')
-                time.sleep(0.5)
+                time.sleep(1)
                 continue
             except Exception:
                 log_struct = {'desc': 'Error while reading stream.',
@@ -100,7 +100,7 @@ class MeetupStream(object):
                        pformat=BColors.FAIL)
                 # noinspection PyTypeChecker
                 MAIN_LOGGER.log_struct(log_struct, severity='EMERGENCY')
-                time.sleep(0.5)
+                time.sleep(1)
                 continue
 
     # noinspection PyTypeChecker
