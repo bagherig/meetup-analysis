@@ -1,17 +1,19 @@
 import os
 import sys
 import json
+import datetime
 import requests
 import linecache
 import threading
 import urllib.parse as urlparse
 from enum import Enum
 from google.cloud import logging
-from google.auth.exceptions import DefaultCredentialsError
+from custom_typing import Logger
 from urllib.parse import urlencode
 from typing import Generator, List, Union
-from custom_typing import Logger
 from requests.exceptions import ChunkedEncodingError
+from google.auth.exceptions import DefaultCredentialsError
+
 
 TEST = False  # Whether we are running in test mode.
 BUCKET_NAME = "meetup_stream_data"
@@ -30,7 +32,8 @@ URLS = ["http://stream.meetup.com/2/event_comments",
 
 class BColors(Enum):
     """
-    A list of color codes that can be used to format the color of text displayed in standard output.
+    A list of color codes that can be used to format the color of text
+    displayed in standard output.
     """
     TITLE = '\033[94m'
     HEADER = '\033[95m'
@@ -45,7 +48,7 @@ class BColors(Enum):
 
 
 def pprint(text: str,
-           pformat: Union[BColors, List[BColors], str]=BColors.OKWHITE
+           pformat: Union[BColors, List[BColors], str] = BColors.OKWHITE
            ) -> None:
     """
     Pretty prints the text in the specified format.
@@ -61,7 +64,13 @@ def pprint(text: str,
             style += fmt.value
     else:
         style = pformat.value
-    print(style + text + BColors.ENDC.value, flush=True)
+    now = datetime.datetime.now().strftime('%b %d, %H:%M:%S')
+    timestamp_style = BColors.UNDERLINE.value + \
+                      BColors.BOLD.value + \
+                      BColors.HEADER.value
+    print(timestamp_style + now + BColors.ENDC.value +
+          " — " + style + text + BColors.ENDC.value,
+          flush=True)
 
 
 class HttpStream(object):
@@ -69,11 +78,12 @@ class HttpStream(object):
     A class for streaming meetup data and triggering a google cloud
     function for storing the data in GCS.
     """
+
     def __init__(self,
                  stream_url: str,
                  http_url: str,
                  bucket_name: str,
-                 prefix: str='meetup'):
+                 prefix: str = 'meetup'):
         """
         initializes an instant of class *HttpStream*.
 
@@ -114,21 +124,22 @@ class HttpStream(object):
                                 mtime = json_data['mtime']
                             yield json_data
             except ChunkedEncodingError:
+                pprint(f"Chunked error while reading stream.",
+                       pformat=BColors.WARNING)
                 # Log exceptions to Stackdriver-Logging.
                 log_struct = {'desc': 'Chunked error while reading stream.',
                               'stream_url': url}
                 log_struct.update(get_exc_info_struct())
-                pprint(f"Chunked error while reading stream.",
-                       pformat=BColors.FAIL)
                 # noinspection PyTypeChecker
                 MAIN_LOGGER.log_struct(log_struct, severity='NOTICE')
                 continue
             except Exception:
+                pprint(f"Error while reading stream:\n"
+                       f"{json.dumps(log_struct, indent=4)}",
+                       pformat=BColors.FAIL)
                 log_struct = {'desc': 'Error while reading stream.',
                               'stream_url': url}
                 log_struct.update(get_exc_info_struct())
-                pprint(f"Error while reading stream: {log_struct}",
-                       pformat=BColors.FAIL)
                 # noinspection PyTypeChecker
                 MAIN_LOGGER.log_struct(log_struct, severity='EMERGENCY')
                 continue
@@ -150,13 +161,14 @@ class HttpStream(object):
                     http_url = add_url_params(self.http, params)
                     requests.post(http_url, json=item)
                 except Exception:
+                    pprint(f"Error while triggering gcf.\n"
+                           f"{json.dumps(log_struct, indent=4)}",
+                           pformat=BColors.FAIL)
                     # Log exceptions to Stackdriver-Logging.
                     log_struct = {'desc': 'Error while triggering GCF.',
                                   'gcf_url': http_url}
                     log_struct.update(get_exc_info_struct())
                     MAIN_LOGGER.log_struct(log_struct, severity='EMERGENCY')
-                    pprint(f"Error while triggering gcf. {log_struct}",
-                           pformat=BColors.FAIL)
                     continue
 
 
@@ -216,6 +228,9 @@ def add_url_params(url: str,
         url_parts = url_parts._replace(query=urlencode(query))
         new_url = urlparse.urlunparse(url_parts)
     except Exception:
+        pprint(f'Error while adding URL params.\n'
+               f'{json.dumps(log_struct, indent=4)}',
+               pformat=BColors.WARNING)
         # Log exceptions to Stackdriver-Logging.
         log_struct = {
             'desc': 'Error while adding URL params.',
@@ -224,9 +239,48 @@ def add_url_params(url: str,
         log_struct.update(get_exc_info_struct())
         # noinspection PyTypeChecker
         MAIN_LOGGER.log_struct(log_struct, severity='ERROR')
-        pprint(f'Error while adding URL params.', pformat=BColors.FAIL)
+
 
     return new_url
+
+
+def get_exc_info_struct() -> dict:
+    """
+    Returns a dictionary containing information about the exception that is
+    currently being handled.
+
+    :return: A dictionary containing information about the exception that is
+        currently being handled.
+    """
+    exc_struct = {}
+
+    try:
+        exc_type, exc_obj, tb = sys.exc_info()
+        if not tb:  # This is None if no exception is being handled.
+            return exc_struct
+        f = tb.tb_frame
+        line_num = tb.tb_lineno  # Line number.
+        filename = f.f_code.co_filename  # File name.
+        linecache.checkcache(filename)
+        line = linecache.getline(filename, line_num, f.f_globals)  # Line text.
+        exc_struct = {
+            'exc_info': {
+                'exc_msg': str(exc_obj),
+                'filename': filename,
+                'line_num': line_num,
+                'line': line.strip(),
+                'exc_obj': repr(exc_obj)
+            }
+        }
+    except Exception:
+        pprint(f'Error while getting exception info.', pformat=BColors.WARNING)
+        # Log exceptions to Stackdriver-Logging.
+        log_text = 'Error while getting exception info.'
+        # noinspection PyTypeChecker
+        MAIN_LOGGER.log_text(log_text, severity='ERROR')
+        exc_struct = {'exc_info': 'Error: Could not retrieve exception info.'}
+
+    return exc_struct
 
 
 def write_stream(stream_url: str,
@@ -281,36 +335,6 @@ def save_data(stream_urls: List[str],
         t.start()
     for t in threads:
         t.join()
-
-
-def get_exc_info_struct() -> dict:
-    """
-    Returns a dictionary containing information about the exception that is
-    currently being handled.
-
-    :return: A dictionary containing information about the exception that is
-        currently being handled.
-    """
-    exc_struct = {}
-    exc_type, exc_obj, tb = sys.exc_info()
-    if not tb:  # This is None if no exception is being handled.
-        return exc_struct
-    f = tb.tb_frame
-    line_num = tb.tb_lineno  # Line number.
-    filename = f.f_code.co_filename  # File name.
-    linecache.checkcache(filename)
-    line = linecache.getline(filename, line_num, f.f_globals)  # Line content.
-    exc_struct = {
-        'exc_info': {
-            'exc_msg': str(exc_obj),
-            'filename': filename,
-            'line_num': line_num,
-            'line': line.strip(),
-            'exc_obj': repr(exc_obj)
-        }
-    }
-
-    return exc_struct
 
 
 if __name__ == "__main__":
