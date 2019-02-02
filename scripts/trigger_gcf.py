@@ -7,6 +7,7 @@ import datetime
 import requests
 import linecache
 import threading
+import numpy as np
 import urllib.parse as urlparse
 from enum import Enum
 from google.cloud import logging
@@ -16,15 +17,7 @@ from typing import Generator, List, Union
 from requests.exceptions import ChunkedEncodingError
 from google.auth.exceptions import DefaultCredentialsError
 
-
-TEST = False  # Whether we are running in test mode.
-BUCKET_NAME = "meetup_stream_data"
-if TEST:
-    # noinspection PyRedeclaration
-    BUCKET_NAME = "meetup_test"
-MAIN_LOGGER = None
-HTTP_URL = \
-    'https://us-central1-meetup-analysis.cloudfunctions.net/save_data'
+LOGGER = None
 URLS = ["http://stream.meetup.com/2/event_comments",
         "http://stream.meetup.com/2/open_events",
         "http://stream.meetup.com/2/open_venues?trickle",
@@ -32,16 +25,25 @@ URLS = ["http://stream.meetup.com/2/event_comments",
         "http://stream.meetup.com/2/rsvps"]
 
 
+class ReqConfigs(Enum):
+    stream_gcf = 'stream_gcf'
+    gcs_bucket = 'stream_gcs_bucket'
+    member_gcf = 'member_gcf'
+    member_collection = 'member_fs_collection'
+    group_gcf = 'group_gcf'
+    group_collection = 'group_fs_collection'
+    meetup_key = 'meetup_api_key'
+
+
 class MeetupStream(object):
     """
     A class for streaming meetup data and triggering a google cloud
     function for storing the data in GCS.
     """
+
     def __init__(self,
-                 stream_url: str,
-                 http_url: str,
-                 bucket_name: str,
-                 prefix: str = 'meetup'):
+                 url: str,
+                 configs: dict):
         """
         Initializes an instant of class *HttpStream*.
 
@@ -52,10 +54,17 @@ class MeetupStream(object):
         :param prefix: A label for describing the type of data
             that is being streamed.
         """
-        self.url = stream_url
-        self.http = http_url
-        self.bucket_name = bucket_name
-        self.prefix = prefix
+        self._required_configs = \
+            np.array([c.value for c in ReqConfigs.__members__.values()])
+        self.url = url
+        self.prefix = url.split('/')[-1].split('?')[0]  # Set the prefix to be
+        # the last path in the URL.
+        self.configs = configs
+        is_config_not_provided = np.array(
+            [key not in configs for key in self._required_configs])
+        if any(is_config_not_provided):
+            raise KeyError('Missing one or more config parameters:'
+                           f'{self._required_configs[is_config_not_provided]}.')
         self.mtime = None  # Stores the timestamp of the last data streamed.
 
     def __read_stream(self) -> Generator[dict, None, None]:
@@ -86,7 +95,7 @@ class MeetupStream(object):
                               'stream_url': url}
                 log_struct.update(get_exc_info_struct())
                 # noinspection PyTypeChecker
-                MAIN_LOGGER.log_struct(log_struct, severity='NOTICE')
+                LOGGER.log_struct(log_struct, severity='NOTICE')
                 time.sleep(1)
                 continue
             except Exception:
@@ -97,7 +106,7 @@ class MeetupStream(object):
                        f"{json.dumps(log_struct, indent=4)}",
                        pformat=BColors.FAIL)
                 # noinspection PyTypeChecker
-                MAIN_LOGGER.log_struct(log_struct, severity='EMERGENCY')
+                LOGGER.log_struct(log_struct, severity='EMERGENCY')
                 time.sleep(1)
                 continue
 
@@ -110,23 +119,71 @@ class MeetupStream(object):
         """
         while True:
             stream = self.__read_stream()  # The stream generator.
-            for item in stream:
-                http_url = None
+            for data_item in stream:
                 try:
-                    params = {"label": self.prefix,
-                              "bucket_name": self.bucket_name}
-                    http_url = add_url_params(self.http, params)
-                    requests.post(http_url, json=item)
+                    self.trigger_save_stream_data(data_item)
+                    if 'member' in data_item and \
+                            'member_id' in data_item['member']:
+                        member_id = data_item['member']['member_id']
+                        self.trigger_save_member_data(member_id)
+                    if 'group' in data_item and \
+                            'id' in data_item['group']:
+                        group_id = data_item['group']['id']
+                        self.trigger_save_group_data(group_id)
                 except Exception:
                     # Log exceptions to Stackdriver-Logging.
-                    log_struct = {'desc': 'Error while triggering GCF.',
-                                  'gcf_url': http_url}
+                    log_struct = {
+                        'desc': 'Error triggering Google Cloud Functions.'}
                     log_struct.update(get_exc_info_struct())
                     pprint(f"Error while triggering gcf.\n"
                            f"{json.dumps(log_struct, indent=4)}",
                            pformat=BColors.FAIL)
-                    MAIN_LOGGER.log_struct(log_struct, severity='EMERGENCY')
+                    LOGGER.log_struct(log_struct, severity='EMERGENCY')
                     continue
+
+    def trigger_save_stream_data(self, data):
+        params = {
+            "label": self.prefix,
+            "bucket_name": self.configs[ReqConfigs.gcs_bucket.value]
+        }
+        http_url = self.configs[ReqConfigs.stream_gcf.value]
+        http_url = add_url_params(http_url, params)
+        r = requests.post(http_url, json=data)
+        if r.status_code != 200:
+            raise self.CloudFunctionError(
+                f'GCF returned an error {r.status_code}. '
+                f'The response is:\n{r.text}')
+
+    def trigger_save_member_data(self, member_id):
+        params = {
+            "member_id": member_id,
+            "meetup_key": self.configs[ReqConfigs.meetup_key.value],
+            "collection": self.configs[ReqConfigs.member_collection.value]
+        }
+        http_url = self.configs[ReqConfigs.member_gcf.value]
+        http_url = add_url_params(http_url, params)
+        r = requests.post(http_url)
+        if r.status_code != 200:
+            raise self.CloudFunctionError(
+                f'GCF returned an error {r.status_code}. '
+                f'The response is:\n{r.text}')
+
+    def trigger_save_group_data(self, group_id):
+        params = {
+            "group_id": group_id,
+            "meetup_key": self.configs[ReqConfigs.meetup_key.value],
+            "collection": self.configs[ReqConfigs.group_collection.value]
+        }
+        http_url = self.configs[ReqConfigs.group_gcf.value]
+        http_url = add_url_params(http_url, params)
+        r = requests.post(http_url)
+        if r.status_code != 200:
+            raise self.CloudFunctionError(
+                f'GCF returned an error {r.status_code}. '
+                f'The response is:\n{r.text}')
+
+    class CloudFunctionError(Exception):
+        pass
 
 
 class BColors(Enum):
@@ -148,7 +205,7 @@ class BColors(Enum):
 
 def pprint(text: str,
            pformat: Union[BColors, List[BColors], str] = BColors.OKWHITE,
-           timestamp: bool=True,
+           timestamp: bool = True,
            timezone: pytz.tzfile = pytz.timezone('US/Eastern')) -> None:
     """
     Pretty prints the text in the specified format.
@@ -180,7 +237,7 @@ def pprint(text: str,
     print(output, flush=True)
 
 
-def connect_gcl(logger_name: str = "Trigger_GCF-Logger") -> Logger:
+def __connect_gcl(logger_name: str = "Trigger_GCF-Logger") -> Logger:
     """
     Sets the ``GOOGLE_APPLICATION_CREDENTIALS`` environmental variable for
     connecting to Stackdriver-Logging and initiates a new logger with name
@@ -246,7 +303,7 @@ def add_url_params(url: str,
                f'{json.dumps(log_struct, indent=4)}',
                pformat=BColors.WARNING)
         # noinspection PyTypeChecker
-        MAIN_LOGGER.log_struct(log_struct, severity='ERROR')
+        LOGGER.log_struct(log_struct, severity='ERROR')
 
     return new_url
 
@@ -284,16 +341,14 @@ def get_exc_info_struct() -> dict:
         # Log exceptions to Stackdriver-Logging.
         log_text = 'Error while getting exception info.'
         # noinspection PyTypeChecker
-        MAIN_LOGGER.log_text(log_text, severity='ERROR')
+        LOGGER.log_text(log_text, severity='ERROR')
         exc_struct = {'exc_info': 'Error: Could not retrieve exception info.'}
 
     return exc_struct
 
 
 def write_stream(stream_url: str,
-                 http_url: str,
-                 bucket_name: str,
-                 prefix: str):
+                 configs: dict):
     """
     Creates an instance of *HttpStream* and triggers its GCF.
 
@@ -305,16 +360,13 @@ def write_stream(stream_url: str,
     :param prefix: A label for describing the type of data
         that is being streamed.
     """
-    meetup_stream = MeetupStream(stream_url=stream_url,
-                                 http_url=http_url,
-                                 bucket_name=bucket_name,
-                                 prefix=prefix)
+    meetup_stream = MeetupStream(url=stream_url,
+                                 configs=configs)
     meetup_stream.trigger_http_function()
 
 
 def save_data(stream_urls: List[str],
-              http_url: str,
-              bucket_name: str):
+              configs: dict) -> None:
     """
     Creates a thread for each url in **stream_urls** and calls the
     ``write_stream`` function to save stream data in a GCS bucket named
@@ -331,30 +383,28 @@ def save_data(stream_urls: List[str],
     pprint("Connecting to data streams...")
     threads = []
     for url in stream_urls:
-        prefix = url.split('/')[-1].split('?')[0]  # Set the prefix to be
-        # the last path in the URL.
-        threads.append(
-            threading.Thread(
-                target=write_stream,
-                args=(url, http_url, bucket_name, prefix))
-        )
+        threads.append(threading.Thread(target=write_stream,
+                                        args=(url, configs)))
     for t in threads:
         t.start()
     for t in threads:
         t.join()
 
 
-if __name__ == "__main__":
-    pprint("——— Starting ———", pformat=[BColors.TITLE, BColors.BOLD],
-           timestamp=False)
-    if TEST:
-        pprint("TEST MODE", pformat=[BColors.UNDERLINE, BColors.OKBLUE],
-               timestamp=False)
-    MAIN_LOGGER = connect_gcl()  # Connect to google-cloud stackdriver logging.
+def main():
+    pprint("——— Starting ———",
+           pformat=[BColors.TITLE, BColors.BOLD], timestamp=False)
+
+    global LOGGER
+    LOGGER = __connect_gcl()
+    with open('../config.json') as json_configs_file:
+        configs = json.load(json_configs_file)
     save_data(stream_urls=URLS,
-              http_url=HTTP_URL,
-              bucket_name=BUCKET_NAME)
+              configs=configs)
 
     pprint("trigger_gcf.py is exiting!!!", pformat=BColors.WARNING)
-    # noinspection PyTypeChecker
-    MAIN_LOGGER.log_text("trigger_gcf.py is exiting!!!", severity='EMERGENCY')
+    LOGGER.log_text("trigger_gcf.py is exiting!!!", severity='EMERGENCY')
+
+
+if __name__ == "__main__":
+    main()
