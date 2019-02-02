@@ -1,1 +1,9 @@
-{"url":"http://stream.meetup.com/2/rsvps", "gcs_bucket": "meetup_data", "prefix":"rsvp_stream"}
+{
+  "stream_gcf": "https://us-central1-meetup-analysis.cloudfunctions.net/save_data",
+  "stream_gcs_bucket": "meetup_test",
+  "member_gcf": "https://us-central1-meetup-analysis.cloudfunctions.net/save_member_data",
+  "member_fs_collection": "member_test",
+  "group_gcf": "https://us-central1-meetup-analysis.cloudfunctions.net/save_group_data",
+  "group_fs_collection": "group_test",
+  "meetup_api_key": "6750346c6854394d66d71606f6024e"
+}
