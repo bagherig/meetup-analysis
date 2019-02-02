@@ -14,7 +14,7 @@ from firebase_admin import firestore
 
 LOGGER = None
 try:
-    LOGGER = logging.Client.logger('Save_Member_Data-Logger(GCF)')
+    LOGGER = logging.Client.logger('Save_Group_Data-Logger(GCF)')
 except Exception:
     pass
 
@@ -130,7 +130,6 @@ def attempt_api_call(api_call: Callable,
                     'attempt': attempt,
                     'api_call': str(api_call)}
                 log_struct.update(get_exc_info_struct())
-                # noinspection PyTypeChecker
                 LOGGER.log_struct(log_struct, severity='WARNING')
             continue
     if LOGGER:
@@ -144,9 +143,9 @@ def attempt_api_call(api_call: Callable,
     return None, False
 
 
-def save_member_data(member_id: str,
-                     meetup_key: str,
-                     collection_name: str) -> Success:
+def save_group_data(group_id: str,
+                    meetup_key: str,
+                    collection_name: str) -> Success:
     """
     Stores ``data`` in a Firestore repository named ``rep_name``. The
     data is stored in a folder named ``label``. ``data_id`` and the
@@ -160,10 +159,10 @@ def save_member_data(member_id: str,
     :return: Returns type Success, representing whether all methods were
         successful or not.
     """
-    doc_name = f'm{member_id}'
-    meetup_url = 'https://api.meetup.com/2/members/'
-    meetup_url += f'?member_id={member_id}&key={meetup_key}'
-
+    doc_name = f'g{group_id}'
+    meetup_url = 'https://api.meetup.com/2/groups'
+    meetup_url += f'?group_id={group_id}&key={meetup_key}'
+    print(meetup_url)
     with requests.get(meetup_url) as r:
         data = r.json()
     # Connect and write to Firestore:
@@ -183,26 +182,25 @@ def main(request) -> Tuple[str, int]:
     :return: A Tuple with a message and status-code regarding whether the
         request was processed successfully.
     """
-    member_id = meetup_key = collection_name = None
-    member_id_par = 'member_id'
+    group_id = meetup_key = collection_name = None
+    group_id_par = 'group_id'
     meetup_key_par = 'meetup_key'
     collection_par = 'collection'
-    if request.args:  # Parse GCS folder name (label) and bucket name.:
-        if member_id_par in request.args:
-            member_id = request.args.get(member_id_par)
+    if request.args:
+        if group_id_par in request.args:
+            group_id = request.args.get(group_id_par)
         if meetup_key_par in request.args:
             meetup_key = request.args.get(meetup_key_par)
         if collection_par in request.args:
             collection_name = request.args.get(collection_par)
-    if not all([member_id, meetup_key, collection_name]):
+    if not all([group_id, meetup_key, collection_name]):
         log_text = f'HTTP parameter member_id or meetup_key was not provided!'
-        # noinspection PyTypeChecker
         LOGGER.log_text(log_text, severity='EMERGENCY')
         return f'Parameter member_id or meetup_key was not provided!', 400
 
-    success: Success = save_member_data(member_id=member_id,
-                                        meetup_key=meetup_key,
-                                        collection_name=collection_name)
+    success: Success = save_group_data(group_id=group_id,
+                                       meetup_key=meetup_key,
+                                       collection_name=collection_name)
     # Check whether data was successfully stored or not:
     if success.value:
         return "Success!", 200
@@ -210,6 +208,5 @@ def main(request) -> Tuple[str, int]:
         log_struct = {
             'desc': f'Error in save_member_data GCF.',
             'failed_iters': success.exceptions}
-        # noinspection PyTypeChecker
         LOGGER.log_struct(log_struct, severity='EMERGENCY')
         return f"Something went wrong... {success.exceptions}", 500
