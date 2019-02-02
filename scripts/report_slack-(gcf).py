@@ -1,3 +1,4 @@
+import os
 import sys
 import json
 import base64
@@ -46,6 +47,7 @@ def get_fields_from_json(json: dict, root: str = ""):
 
 def format_slack_message(content):
     json_data = json.loads(content)
+    report_text = None
     logger = json_data['logName'].split('/')[-1]
     severity = json_data['severity']
     ts = datetime.datetime.now().timestamp()
@@ -54,14 +56,21 @@ def format_slack_message(content):
         color = 'warning'
     elif severity in ('CRITICAL', 'ALERT', 'EMERGENCY'):
         color = 'danger'
+
+    spam_wait_time = 60  # how many seconds to block messages received that are
+    # the same as the last message received.
+    last_report_desc = str(os.environ.get('last_report_desc'))
+    last_report_time = int(os.environ.get('last_report_time'))
+    now = int(datetime.datetime.now().timestamp())
     if 'jsonPayload' in json_data:
         json_payload = json_data['jsonPayload']
+        report_text = json_payload['desc']
         fields = get_fields_from_json(json_payload)
         message = {
             "attachments": [
                 {
                     "author_name": logger,
-                    "text": f"_{json_payload['desc']}_",
+                    "text": f"_{report_text}_",
                     "color": color,
                     "fields": fields,
                     "footer": severity,
@@ -71,11 +80,12 @@ def format_slack_message(content):
             ]
         }
     else:
+        report_text = json_data['textPayload']
         message = {
             "attachments": [
                 {
                     "author_name": logger,
-                    "text": f"_{json_data['textPayload']}_",
+                    "text": f"_{report_text}_",
                     "color": color,
                     "footer": severity,
                     "ts": ts,
@@ -84,34 +94,45 @@ def format_slack_message(content):
             ]
         }
 
+    # Prevent from spamming the channel with same error.
+    if report_text == last_report_desc and \
+            now - last_report_time < spam_wait_time:
+        os.environ['last_report_time'] = str(now)
+        return
+
+    os.environ['last_report_time'] = str(now)
+    os.environ['last_report_desc'] = report_text
+
     return message
 
 
 def report_slack(content):
     webhook_url = 'https://hooks.slack.com/services/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'
     message = format_slack_message(content)
-    response = requests.post(
-        webhook_url, data=json.dumps(message),
-        headers={'Content-Type': 'application/json'})
+    if message:
+        response = requests.post(
+            webhook_url, data=json.dumps(message),
+            headers={'Content-Type': 'application/json'})
 
-    if response.status_code != 200:
-        raise ValueError(
-            f"Request to slack returned an error {response.status_code}, the response is:\n{response.text}")
+        if response.status_code != 200:
+            raise ValueError(
+                f"Request to slack returned an error {response.status_code}. "
+                f"The response is:\n{response.text}")
 
 
 def main(event, context):
-    """Triggered from a message on a Cloud Pub/Sub topic.
+    """
+    Triggered from a message on a Cloud Pub/Sub topic.
     Args:
          event (dict): Event payload.
          context (google.cloud.functions.Context): Metadata for the event.
     """
-    logging_client = logging.Client()
-    logger = logging_client.logger("pubsub")
+    logger = logging.Client().logger("report_slack-Logger(GCF)")
     try:
         if 'data' in event:
             pubsub_message = base64.b64decode(event['data']).decode('utf-8')
             report_slack(pubsub_message)
-    except Exception as e:
-        log_struct = {'desc': 'Error pubsub.'}
+    except Exception:
+        log_struct = {'desc': 'Error while reporting to Slack.'}
         log_struct.update(get_exc_info_struct())
         logger.log_struct(log_struct)
