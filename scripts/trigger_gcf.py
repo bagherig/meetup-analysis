@@ -73,13 +73,13 @@ class MeetupStream(object):
 
         :returns: The last data streamed from self.url.
         """
+        pprint(f"Reading {self.prefix} stream: {self.url}")
         while True:
             url = self.url
             if self.mtime:  # self.mtime is not None if the stream has been
                 # interrupted by an exception, after starting.
                 new_params = {'since_mtime': self.mtime}
                 url = add_url_params(url, new_params)
-            pprint(f"Reading {self.prefix} stream: {url}")
             try:
                 with requests.get(url, stream=True) as r:
                     for line in r.iter_lines():
