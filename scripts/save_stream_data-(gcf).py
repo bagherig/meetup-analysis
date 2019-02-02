@@ -8,16 +8,13 @@ import time
 import json
 import datetime
 import linecache
-import firebase_admin
 from typing import Callable, List, Tuple, Any, Union
 from google.cloud import storage
 from google.cloud import logging
-from firebase_admin import firestore
 
-LOGGING_CLIENT = LOGGER = None
+LOGGER = None
 try:
-    LOGGING_CLIENT, _ = logging.Client
-    LOGGER = LOGGING_CLIENT.logger('save_data-Logger(GCF)')
+    LOGGER = logging.Client.logger('Save_Stream_Data-Logger(GCF)')
 except Exception:
     pass
 
