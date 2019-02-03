@@ -111,7 +111,7 @@ class MeetupStream(object):
                 continue
 
     # noinspection PyTypeChecker
-    def trigger_http_function(self):
+    def trigger_cloud_functions(self):
         """
         Triggers the GCF with url self.http with a POST request. Each POST
         request contains the last data streamed, as well as the GCS bucket
@@ -133,18 +133,27 @@ class MeetupStream(object):
                     attempt_func_call(
                         lambda: self.trigger_save_group_data(group_id))
 
+    def trigger_http_gcf(self, url, data: dict=None, params: dict=None):
+        name = url.split('/')[-1]
+        if params:
+            url = add_url_params(url, params)
+        r = requests.post(url, json=data)
+
+        if r.status_code >= 500:
+            raise self.CloudFunctionError(
+                f'GCF returned an error {r.status_code}. '
+                f'The response is:\n{r.text}')
+
+        pprint(f'{name} GCF triggered!',
+               pformat=BColors.OKGREEN, irreplaceable=False)
+
     def trigger_save_stream_data(self, data):
         params = {
             "label": self.prefix,
             "bucket_name": self.configs[ReqConfigs.gcs_bucket.value]
         }
-        http_url = self.configs[ReqConfigs.stream_gcf.value]
-        http_url = add_url_params(http_url, params)
-        r = requests.post(http_url, json=data)
-        if r.status_code >= 500:
-            raise self.CloudFunctionError(
-                f'GCF returned an error {r.status_code}. '
-                f'The response is:\n{r.text}')
+        url = self.configs[ReqConfigs.stream_gcf.value]
+        self.trigger_http_gcf(url, data=data, params=params)
 
     def trigger_save_member_data(self, member_id):
         params = {
@@ -152,13 +161,8 @@ class MeetupStream(object):
             "meetup_key": self.configs[ReqConfigs.meetup_key.value],
             "collection": self.configs[ReqConfigs.member_collection.value]
         }
-        http_url = self.configs[ReqConfigs.member_gcf.value]
-        http_url = add_url_params(http_url, params)
-        r = requests.post(http_url)
-        if r.status_code >= 500:
-            raise self.CloudFunctionError(
-                f'GCF returned an error {r.status_code}. '
-                f'The response is:\n{r.text}')
+        url = self.configs[ReqConfigs.member_gcf.value]
+        self.trigger_http_gcf(url, params=params)
 
     def trigger_save_group_data(self, group_id):
         params = {
@@ -166,13 +170,8 @@ class MeetupStream(object):
             "meetup_key": self.configs[ReqConfigs.meetup_key.value],
             "collection": self.configs[ReqConfigs.group_collection.value]
         }
-        http_url = self.configs[ReqConfigs.group_gcf.value]
-        http_url = add_url_params(http_url, params)
-        r = requests.post(http_url)
-        if r.status_code >= 500:
-            raise self.CloudFunctionError(
-                f'GCF returned an error {r.status_code}. '
-                f'The response is:\n{r.text}')
+        url = self.configs[ReqConfigs.group_gcf.value]
+        self.trigger_http_gcf(url, params=params)
 
     class CloudFunctionError(Exception):
         pass
@@ -197,6 +196,8 @@ class BColors(Enum):
 
 def pprint(text: str,
            pformat: Union[BColors, List[BColors], str] = BColors.OKWHITE,
+           replace_last: bool = True,
+           irreplaceable: bool = True,
            timestamp: bool = True,
            timezone: pytz.tzfile = pytz.timezone('US/Eastern')) -> None:
     """
@@ -226,7 +227,13 @@ def pprint(text: str,
         output += timestamp_style + now_str + BColors.ENDC.value + " — "
     output += style + text + BColors.ENDC.value
 
+    if replace_last:
+        sys.stdout.write('\u001b[1A\u001b[2K')
+
     print(output, flush=True)
+
+    if irreplaceable:
+        sys.stdout.write('\n')
 
 
 def __connect_gcl(logger_name: str = "Trigger_GCF-Logger") -> Logger:
@@ -247,7 +254,7 @@ def __connect_gcl(logger_name: str = "Trigger_GCF-Logger") -> Logger:
         logging_client = logging.Client()
     except DefaultCredentialsError:
         google_env_var = "GOOGLE_APPLICATION_CREDENTIALS"
-        credentials_path = os.path.join(os.getcwd(), 'meetup-analysis.json')
+        credentials_path = os.path.join(os.getcwd(), '../meetup-analysis.json')
         if os.environ.get(google_env_var) is None:
             if os.path.exists(credentials_path):
                 os.environ[google_env_var] = credentials_path
@@ -413,7 +420,7 @@ def write_stream(stream_url: str,
     """
     meetup_stream = MeetupStream(url=stream_url,
                                  configs=configs)
-    meetup_stream.trigger_http_function()
+    meetup_stream.trigger_cloud_functions()
 
 
 def save_data(stream_urls: List[str],
