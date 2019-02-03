@@ -4,16 +4,17 @@ Created on Fri Jan 11 18:09:12 2019
 @author: moeen
 """
 import json
-from urllib.request import urlopen
 from typing import Tuple
+from urllib.request import urlopen
 from google.cloud import firestore
+from google.api_core import exceptions
 
 DB = firestore.Client()
 
 
 def save_member_data(member_id: str,
                      meetup_key: str,
-                     collection_name: str) -> None:
+                     collection_name: str) -> int:
     """
     Stores ``data`` in a Firestore repository named ``rep_name``. The
     data is stored in a folder named ``label``. ``data_id`` and the
@@ -34,7 +35,12 @@ def save_member_data(member_id: str,
     with urlopen(meetup_url) as r:
         data = json.loads(r.read().decode('utf-8'))
 
-    DB.collection(collection_name).document(doc_name).set(data, merge=True)
+    try:
+        DB.collection(collection_name).document(doc_name).set(data, merge=True)
+    except exceptions.ServiceUnavailable as e:
+        return int(e.code)
+
+    return 200
 
 
 def main(request) -> Tuple[str, int]:
@@ -58,8 +64,8 @@ def main(request) -> Tuple[str, int]:
     if not all([member_id, meetup_key, collection_name]):
         return f'A parameter was not provided!', 400
 
-    save_member_data(member_id=member_id,
-                     meetup_key=meetup_key,
-                     collection_name=collection_name)
+    status_code = save_member_data(member_id=member_id,
+                                   meetup_key=meetup_key,
+                                   collection_name=collection_name)
 
-    return "Success!", 200
+    return "Finished!", status_code

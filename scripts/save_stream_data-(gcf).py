@@ -6,14 +6,15 @@ Created on Fri Jan 11 18:09:12 2019
 import datetime
 from typing import Tuple, Union
 from google.cloud import storage
+from google.api_core import exceptions
 
 GS = storage.Client()
 
 
-def save_data(data: object,
-              data_id: Union[str, int],
-              bucket_name: str,
-              label: str = 'meetup') -> None:
+def save_stream_data(data: object,
+                     data_id: Union[str, int],
+                     bucket_name: str,
+                     label: str = 'meetup') -> int:
     """
     Stores ``data`` in a GCS bucket named ``bucket_name``. The data is
     stored in a folder named ``label``. ``data_id`` and the current
@@ -30,9 +31,14 @@ def save_data(data: object,
     current_time = datetime.datetime.now().timestamp()
     filename = f'{label}/{data_id}_{current_time}.json'
 
-    gcs_bucket = GS.get_bucket(bucket_name)
-    gcs_file = gcs_bucket.blob(filename)
-    gcs_file.upload_from_string(str(data))
+    try:
+        gcs_bucket = GS.get_bucket(bucket_name)
+        gcs_file = gcs_bucket.blob(filename)
+        gcs_file.upload_from_string(str(data))
+    except exceptions.ServiceUnavailable as e:
+        return int(e.code)
+
+    return 200
 
 
 def main(request) -> Tuple[str, int]:
@@ -67,9 +73,9 @@ def main(request) -> Tuple[str, int]:
     else:
         data_id = data['id']
 
-    save_data(data=data,
-              data_id=data_id,
-              bucket_name=bucket_name,
-              label=label)
+    status_code = save_stream_data(data=data,
+                                   data_id=data_id,
+                                   bucket_name=bucket_name,
+                                   label=label)
 
-    return "Success!", 200
+    return "Finished!", status_code

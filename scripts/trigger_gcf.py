@@ -13,7 +13,7 @@ from enum import Enum
 from google.cloud import logging
 from custom_typing import Logger
 from urllib.parse import urlencode
-from typing import Generator, List, Union
+from typing import Generator, List, Union, Callable, Tuple, Any
 from requests.exceptions import ChunkedEncodingError
 from google.auth.exceptions import DefaultCredentialsError
 
@@ -121,15 +121,18 @@ class MeetupStream(object):
             stream = self.__read_stream()  # The stream generator.
             for data_item in stream:
                 try:
-                    self.trigger_save_stream_data(data_item)
+                    attempt_func_call(
+                        lambda: self.trigger_save_stream_data(data_item))
                     if 'member' in data_item and \
                             'member_id' in data_item['member']:
                         member_id = data_item['member']['member_id']
-                        self.trigger_save_member_data(member_id)
+                        attempt_func_call(
+                            lambda: self.trigger_save_member_data(member_id))
                     if 'group' in data_item and \
                             'id' in data_item['group']:
                         group_id = data_item['group']['id']
-                        self.trigger_save_group_data(group_id)
+                        attempt_func_call(
+                            lambda: self.trigger_save_group_data(group_id))
                 except Exception:
                     # Log exceptions to Stackdriver-Logging.
                     log_struct = {
@@ -149,7 +152,7 @@ class MeetupStream(object):
         http_url = self.configs[ReqConfigs.stream_gcf.value]
         http_url = add_url_params(http_url, params)
         r = requests.post(http_url, json=data)
-        if r.status_code != 200:
+        if r.status_code > 500:
             raise self.CloudFunctionError(
                 f'GCF returned an error {r.status_code}. '
                 f'The response is:\n{r.text}')
@@ -163,7 +166,7 @@ class MeetupStream(object):
         http_url = self.configs[ReqConfigs.member_gcf.value]
         http_url = add_url_params(http_url, params)
         r = requests.post(http_url)
-        if r.status_code != 200:
+        if r.status_code > 500:
             raise self.CloudFunctionError(
                 f'GCF returned an error {r.status_code}. '
                 f'The response is:\n{r.text}')
@@ -177,7 +180,7 @@ class MeetupStream(object):
         http_url = self.configs[ReqConfigs.group_gcf.value]
         http_url = add_url_params(http_url, params)
         r = requests.post(http_url)
-        if r.status_code != 200:
+        if r.status_code > 500:
             raise self.CloudFunctionError(
                 f'GCF returned an error {r.status_code}. '
                 f'The response is:\n{r.text}')
@@ -271,63 +274,63 @@ def __connect_gcl(logger_name: str = "Trigger_GCF-Logger") -> Logger:
     return logger
 
 
-# def attempt_api_call(api_call: Callable,
-#                      num_attempts: int = 5,
-#                      sleep_time: float = 1,
-#                      ignored_exceptions: Tuple[Exception]=(),
-#                      ) -> Tuple[Any, bool]:
-#     """
-#     Attempts to call the *Callable* object ``api_call``. If the call fails,
-#     the function sleeps for ``sleep_time`` milliseconds before attempting to
-#     call ``api_call`` again. The function attempts to call ``api_call``
-#     ``num_attempts`` times. If ``api_call`` fails because of an exception
-#     included in ``ignored_exceptions``, ``api_call`` is not attempted again.
-#
-#     :param api_call: A Callable object to call.
-#     :param num_attempts: The number of attempts for calling api_call.
-#     :param sleep_time: The number of seconds to wait before each
-#         reattempt.
-#     :param ignored_exceptions: A tuple of Exceptions. If these
-#         exceptions are thrown, api_call is not reattempted.
-#     :return: A Tuple containing the return value of api_call and
-#         whether the call was successful. If the call was not successful,
-#         None is returned as the return value of api_call.
-#     """
-#     for attempt in range(num_attempts):
-#         try:
-#             obj = api_call()
-#             if LOGGER and attempt:
-#                 log_struct = {
-#                     'desc': f'Successfully called API method.',
-#                     'attempt': attempt,
-#                     'api_call': str(api_call)}
-#                 log_struct.update(get_exc_info_struct())
-#                 # noinspection PyTypeChecker
-#                 LOGGER.log_struct(log_struct, severity='INFO')
-#             return obj, True
-#         except ignored_exceptions:
-#             return None, False
-#         except Exception:
-#             time.sleep(sleep_time)
-#             if LOGGER:
-#                 # Log exceptions to Stackdriver-Logging.
-#                 log_struct = {
-#                     'desc': f'API method call attempt failed!',
-#                     'attempt': attempt,
-#                     'api_call': str(api_call)}
-#                 log_struct.update(get_exc_info_struct())
-#                 # noinspection PyTypeChecker
-#                 LOGGER.log_struct(log_struct, severity='WARNING')
-#             continue
-#     if LOGGER:
-#         log_struct = {
-#             'desc': f'Could not call the API method!',
-#             'num_attempts': num_attempts,
-#             'api_call': str(api_call)}
-#         # noinspection PyTypeChecker
-#         LOGGER.log_struct(log_struct, severity='ALERT')
-#
-#     return None, False
+def attempt_func_call(api_call: Callable,
+                      num_attempts: int = 10,
+                      sleep_time: float = 1,
+                      ignored_exceptions: Tuple[Exception] = (),
+                      ) -> Tuple[Any, bool]:
+    """
+    Attempts to call the *Callable* object ``api_call``. If the call fails,
+    the function sleeps for ``sleep_time`` milliseconds before attempting to
+    call ``api_call`` again. The function attempts to call ``api_call``
+    ``num_attempts`` times. If ``api_call`` fails because of an exception
+    included in ``ignored_exceptions``, ``api_call`` is not attempted again.
+
+    :param api_call: A Callable object to call.
+    :param num_attempts: The number of attempts for calling api_call.
+    :param sleep_time: The number of seconds to wait before each
+        reattempt.
+    :param ignored_exceptions: A tuple of Exceptions. If these
+        exceptions are thrown, api_call is not reattempted.
+    :return: A Tuple containing the return value of api_call and
+        whether the call was successful. If the call was not successful,
+        None is returned as the return value of api_call.
+    """
+    for attempt in range(num_attempts):
+        try:
+            obj = api_call()
+            if LOGGER and attempt:
+                log_struct = {
+                    'desc': f'Successfully called API method.',
+                    'attempt': attempt,
+                    'api_call': str(api_call)}
+                log_struct.update(get_exc_info_struct())
+                # noinspection PyTypeChecker
+                LOGGER.log_struct(log_struct, severity='INFO')
+            return obj, True
+        except ignored_exceptions:
+            return None, False
+        except Exception:
+            time.sleep(sleep_time)
+            if LOGGER:
+                # Log exceptions to Stackdriver-Logging.
+                log_struct = {
+                    'desc': f'API method call attempt failed!',
+                    'attempt': attempt,
+                    'api_call': str(api_call)}
+                log_struct.update(get_exc_info_struct())
+                # noinspection PyTypeChecker
+                LOGGER.log_struct(log_struct, severity='WARNING')
+            continue
+    if LOGGER:
+        log_struct = {
+            'desc': f'Could not call the API method!',
+            'num_attempts': num_attempts,
+            'api_call': str(api_call)}
+        # noinspection PyTypeChecker
+        LOGGER.log_struct(log_struct, severity='ALERT')
+
+    return None, False
 
 
 def add_url_params(url: str,
