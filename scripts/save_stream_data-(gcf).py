@@ -37,6 +37,8 @@ def save_stream_data(data: object,
         gcs_file.upload_from_string(str(data))
     except exceptions.ServiceUnavailable as e:
         return int(e.code)
+    except ConnectionResetError:
+        return 500
 
     return 200
 

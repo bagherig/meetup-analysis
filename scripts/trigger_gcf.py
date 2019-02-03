@@ -120,29 +120,18 @@ class MeetupStream(object):
         while True:
             stream = self.__read_stream()  # The stream generator.
             for data_item in stream:
-                try:
+                attempt_func_call(
+                    lambda: self.trigger_save_stream_data(data_item))
+                if 'member' in data_item and \
+                        'member_id' in data_item['member']:
+                    member_id = data_item['member']['member_id']
                     attempt_func_call(
-                        lambda: self.trigger_save_stream_data(data_item))
-                    if 'member' in data_item and \
-                            'member_id' in data_item['member']:
-                        member_id = data_item['member']['member_id']
-                        attempt_func_call(
-                            lambda: self.trigger_save_member_data(member_id))
-                    if 'group' in data_item and \
-                            'id' in data_item['group']:
-                        group_id = data_item['group']['id']
-                        attempt_func_call(
-                            lambda: self.trigger_save_group_data(group_id))
-                except Exception:
-                    # Log exceptions to Stackdriver-Logging.
-                    log_struct = {
-                        'desc': 'Error triggering Google Cloud Functions.'}
-                    log_struct.update(get_exc_info_struct())
-                    pprint(f"Error while triggering gcf.\n"
-                           f"{json.dumps(log_struct, indent=4)}",
-                           pformat=BColors.FAIL)
-                    LOGGER.log_struct(log_struct, severity='EMERGENCY')
-                    continue
+                        lambda: self.trigger_save_member_data(member_id))
+                if 'group' in data_item and \
+                        'id' in data_item['group']:
+                    group_id = data_item['group']['id']
+                    attempt_func_call(
+                        lambda: self.trigger_save_group_data(group_id))
 
     def trigger_save_stream_data(self, data):
         params = {
@@ -152,7 +141,7 @@ class MeetupStream(object):
         http_url = self.configs[ReqConfigs.stream_gcf.value]
         http_url = add_url_params(http_url, params)
         r = requests.post(http_url, json=data)
-        if r.status_code > 500:
+        if r.status_code >= 500:
             raise self.CloudFunctionError(
                 f'GCF returned an error {r.status_code}. '
                 f'The response is:\n{r.text}')
@@ -166,7 +155,7 @@ class MeetupStream(object):
         http_url = self.configs[ReqConfigs.member_gcf.value]
         http_url = add_url_params(http_url, params)
         r = requests.post(http_url)
-        if r.status_code > 500:
+        if r.status_code >= 500:
             raise self.CloudFunctionError(
                 f'GCF returned an error {r.status_code}. '
                 f'The response is:\n{r.text}')
@@ -180,7 +169,7 @@ class MeetupStream(object):
         http_url = self.configs[ReqConfigs.group_gcf.value]
         http_url = add_url_params(http_url, params)
         r = requests.post(http_url)
-        if r.status_code > 500:
+        if r.status_code >= 500:
             raise self.CloudFunctionError(
                 f'GCF returned an error {r.status_code}. '
                 f'The response is:\n{r.text}')
