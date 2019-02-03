@@ -1,30 +1,13 @@
 import os
-import sys
 import json
 import base64
 import requests
 import datetime
-import linecache
 import itertools
-from google.cloud import logging
 
-
-def get_exc_info_struct():
-    exc_type, exc_obj, tb = sys.exc_info()
-    f = tb.tb_frame
-    line_num = tb.tb_lineno
-    filename = f.f_code.co_filename
-    linecache.checkcache(filename)
-    line = linecache.getline(filename, line_num, f.f_globals)
-    exc_struct = {
-        'exc_msg': str(exc_obj),
-        'filename': filename,
-        'line_num': line_num,
-        'line': line.strip(),
-        'exc_obj': exc_obj
-    }
-
-    return exc_struct
+SPAMS = []
+LAST_REPORT = None
+LAST_TIME = 0
 
 
 def get_fields_from_json(json: dict, root: str = ""):
@@ -47,8 +30,7 @@ def get_fields_from_json(json: dict, root: str = ""):
 
 def format_slack_message(content):
     json_data = json.loads(content)
-    report_text = None
-    logger = json_data['logName'].split('/')[-1]
+    logger = json_data['logName'].split('/')[-1].split('%2F')[-1]
     severity = json_data['severity']
     ts = datetime.datetime.now().timestamp()
     color = 'good'
@@ -57,51 +39,45 @@ def format_slack_message(content):
     elif severity in ('CRITICAL', 'ALERT', 'EMERGENCY'):
         color = 'danger'
 
-    spam_wait_time = 60  # how many seconds to block messages received that are
-    # the same as the last message received.
-    last_report_desc = str(os.environ.get('last_report_desc'))
-    last_report_time = int(os.environ.get('last_report_time'))
-    now = int(datetime.datetime.now().timestamp())
+    report_text = ''
+    payload = {}
     if 'jsonPayload' in json_data:
-        json_payload = json_data['jsonPayload']
-        report_text = json_payload['desc']
-        fields = get_fields_from_json(json_payload)
-        message = {
-            "attachments": [
-                {
-                    "author_name": logger,
-                    "text": f"_{report_text}_",
-                    "color": color,
-                    "fields": fields,
-                    "footer": severity,
-                    "ts": ts,
-                    "mrkdwn_in": ["text", "fields"]
-                }
-            ]
-        }
-    else:
+        payload = json_data['jsonPayload']
+        if 'desc' in payload:
+            report_text = payload['desc']
+    elif 'protoPayload' in json_data:
+        payload = json_data['protoPayload']
+    elif 'textPayload' in json_data:
         report_text = json_data['textPayload']
-        message = {
-            "attachments": [
-                {
-                    "author_name": logger,
-                    "text": f"_{report_text}_",
-                    "color": color,
-                    "footer": severity,
-                    "ts": ts,
-                    "mrkdwn_in": ["text"]
-                }
-            ]
-        }
+        payload = json_data['resource']['labels']
+
+    fields = get_fields_from_json(payload)
+    message = {
+        "attachments": [
+            {
+                "author_name": logger,
+                "text": f"```{report_text}```" if report_text else "",
+                "color": color,
+                "fields": fields,
+                "footer": severity,
+                "ts": ts,
+                "mrkdwn_in": ["text", "fields"]
+            }
+        ]
+    }
 
     # Prevent from spamming the channel with same error.
-    if report_text == last_report_desc and \
-            now - last_report_time < spam_wait_time:
-        os.environ['last_report_time'] = str(now)
+    global LAST_REPORT, LAST_TIME
+    spam_wait_time = 60  # how many seconds to block messages received that are
+    # the same as the last message received.
+    now = int(datetime.datetime.now().timestamp())
+    message_json = json.dumps(message)
+    if message_json == LAST_REPORT and \
+            now - LAST_TIME < spam_wait_time:
         return
 
-    os.environ['last_report_time'] = str(now)
-    os.environ['last_report_desc'] = report_text
+    LAST_REPORT = message_json
+    LAST_TIME = now
 
     return message
 
@@ -127,12 +103,15 @@ def main(event, context):
          event (dict): Event payload.
          context (google.cloud.functions.Context): Metadata for the event.
     """
-    logger = logging.Client().logger("report_slack-Logger(GCF)")
-    try:
-        if 'data' in event:
-            pubsub_message = base64.b64decode(event['data']).decode('utf-8')
+    spam_num = int(os.environ.get('spam_limit_number'))
+    spam_time = int(os.environ.get('spam_limit_mintes'))
+
+    if 'data' in event:
+        now = int(datetime.datetime.now().timestamp())
+        global SPAMS
+        SPAMS = [rtime for rtime in SPAMS if now - rtime < spam_time * 60]
+        if len(SPAMS) <= spam_num:
+            pubsub_message = \
+                base64.b64decode(event['data']).decode('utf-8')
             report_slack(pubsub_message)
-    except Exception:
-        log_struct = {'desc': 'Error while reporting to Slack.'}
-        log_struct.update(get_exc_info_struct())
-        logger.log_struct(log_struct)
+            SPAMS.append(now)
