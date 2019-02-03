@@ -8,6 +8,7 @@ from typing import Tuple
 from google.cloud import firestore
 from urllib.request import urlopen
 from google.api_core import exceptions
+from json.decoder import JSONDecodeError
 
 DB = firestore.Client()
 
@@ -32,8 +33,11 @@ def save_group_data(group_id: str,
     meetup_url = 'https://api.meetup.com/2/groups'
     meetup_url += f'?group_id={group_id}&key={meetup_key}'
 
-    with urlopen(meetup_url) as r:
-        data = json.loads(r.read().decode('utf-8'))
+    try:
+        with urlopen(meetup_url) as r:
+            data = json.loads(r.read().decode('utf-8'))
+    except JSONDecodeError:
+        return 500
 
     try:
         DB.collection(collection_name).document(doc_name).set(data, merge=True)
