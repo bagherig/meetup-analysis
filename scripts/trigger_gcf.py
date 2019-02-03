@@ -271,6 +271,65 @@ def __connect_gcl(logger_name: str = "Trigger_GCF-Logger") -> Logger:
     return logger
 
 
+# def attempt_api_call(api_call: Callable,
+#                      num_attempts: int = 5,
+#                      sleep_time: float = 1,
+#                      ignored_exceptions: Tuple[Exception]=(),
+#                      ) -> Tuple[Any, bool]:
+#     """
+#     Attempts to call the *Callable* object ``api_call``. If the call fails,
+#     the function sleeps for ``sleep_time`` milliseconds before attempting to
+#     call ``api_call`` again. The function attempts to call ``api_call``
+#     ``num_attempts`` times. If ``api_call`` fails because of an exception
+#     included in ``ignored_exceptions``, ``api_call`` is not attempted again.
+#
+#     :param api_call: A Callable object to call.
+#     :param num_attempts: The number of attempts for calling api_call.
+#     :param sleep_time: The number of seconds to wait before each
+#         reattempt.
+#     :param ignored_exceptions: A tuple of Exceptions. If these
+#         exceptions are thrown, api_call is not reattempted.
+#     :return: A Tuple containing the return value of api_call and
+#         whether the call was successful. If the call was not successful,
+#         None is returned as the return value of api_call.
+#     """
+#     for attempt in range(num_attempts):
+#         try:
+#             obj = api_call()
+#             if LOGGER and attempt:
+#                 log_struct = {
+#                     'desc': f'Successfully called API method.',
+#                     'attempt': attempt,
+#                     'api_call': str(api_call)}
+#                 log_struct.update(get_exc_info_struct())
+#                 # noinspection PyTypeChecker
+#                 LOGGER.log_struct(log_struct, severity='INFO')
+#             return obj, True
+#         except ignored_exceptions:
+#             return None, False
+#         except Exception:
+#             time.sleep(sleep_time)
+#             if LOGGER:
+#                 # Log exceptions to Stackdriver-Logging.
+#                 log_struct = {
+#                     'desc': f'API method call attempt failed!',
+#                     'attempt': attempt,
+#                     'api_call': str(api_call)}
+#                 log_struct.update(get_exc_info_struct())
+#                 # noinspection PyTypeChecker
+#                 LOGGER.log_struct(log_struct, severity='WARNING')
+#             continue
+#     if LOGGER:
+#         log_struct = {
+#             'desc': f'Could not call the API method!',
+#             'num_attempts': num_attempts,
+#             'api_call': str(api_call)}
+#         # noinspection PyTypeChecker
+#         LOGGER.log_struct(log_struct, severity='ALERT')
+#
+#     return None, False
+
+
 def add_url_params(url: str,
                    params: dict) -> str:
     """
