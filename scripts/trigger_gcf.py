@@ -17,6 +17,7 @@ from urllib.parse import urlencode
 from requests.exceptions import ChunkedEncodingError
 from google.auth.exceptions import DefaultCredentialsError
 from typing import Generator, List, Union, Tuple, Any, Callable
+import subprocess
 
 LOGGER = None
 URLS = ["http://stream.meetup.com/2/event_comments",
@@ -151,13 +152,12 @@ class MeetupStream(object):
             elif r.status_code != http.HTTPStatus.OK:
                 raise self.FatalCloudFunctionError(r.status_code, r.text)
             pprint(f'{name} GCF triggered!',
-                   pformat=BColors.OKBLUE, replace_last=True, replaceable=True)
+                   pformat=BColors.OKBLUE, title=True)
 
     def trigger_save_stream_data(self, data):
         params = {
             "label": self.prefix,
-            "bucket_name": self.configs[ReqConfigs.gcs_bucket.value]
-        }
+            "bucket_name": self.configs[ReqConfigs.gcs_bucket.value]}
         url = self.configs[ReqConfigs.stream_gcf.value]
         self.trigger_http_gcf(url, data=data, params=params)
 
@@ -210,8 +210,7 @@ class BColors(Enum):
 
 def pprint(text: str,
            pformat: Union[BColors, List[BColors], str] = BColors.OKWHITE,
-           replace_last: bool = False,
-           replaceable: bool = False,
+           title: bool = False,
            timestamp: bool = True,
            timezone: pytz.tzfile = pytz.timezone('US/Eastern')) -> None:
     """
@@ -222,34 +221,29 @@ def pprint(text: str,
     :param timestamp: Whether to add a timestamp to the beginning of text.
     :param timezone: The timezone of timestamp, if timestamp is True.
     """
-    style = output = ""
-    if isinstance(pformat, str):
-        style = getattr(BColors, pformat.upper())
-    elif isinstance(pformat, list):
-        for fmt in pformat:
-            style += fmt.value
+    if not title:
+        style = output = ""
+        if isinstance(pformat, str):
+            style = getattr(BColors, pformat.upper())
+        elif isinstance(pformat, list):
+            for fmt in pformat:
+                style += fmt.value
+        else:
+            style = pformat.value
+
+        if timestamp:
+            ref_now = pytz.utc.localize(datetime.datetime.utcnow())
+            local_now = ref_now.astimezone(timezone)
+            now_str = local_now.strftime('%b %d, %H:%M:%S')
+            timestamp_style = BColors.UNDERLINE.value + \
+                              BColors.BOLD.value + \
+                              BColors.HEADER.value
+            output += timestamp_style + now_str + BColors.ENDC.value + " — "
+        output += style + text + BColors.ENDC.value
+        print(output, flush=True)
     else:
-        style = pformat.value
-
-    if timestamp:
-        ref_now = pytz.utc.localize(datetime.datetime.utcnow())
-        local_now = ref_now.astimezone(timezone)
-        now_str = local_now.strftime('%b %d, %H:%M:%S')
-        timestamp_style = BColors.UNDERLINE.value + \
-                          BColors.BOLD.value + \
-                          BColors.HEADER.value
-        output += timestamp_style + now_str + BColors.ENDC.value + " — "
-    output += style + text + BColors.ENDC.value
-
-    if replace_last:
-        sys.stdout.write('\0338')
-        sys.stdout.write('\u001b[0J')
-    if replaceable:
-        sys.stdout.write('\0337')
-
-    print(output, flush=True)
-    if not replaceable:
-        sys.stdout.write('\0337')
+        output = f'\033]2;{text}\007'
+        print(output, end='', flush=True)
 
 
 def __connect_gcl(logger_name: str = "Trigger_GCF-Logger") -> Logger:
@@ -498,4 +492,5 @@ def main():
 
 
 if __name__ == "__main__":
+    subprocess.run('', shell=True)
     main()
