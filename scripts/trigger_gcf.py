@@ -3,6 +3,8 @@ import sys
 import pytz
 import json
 import time
+import http
+import term
 import datetime
 import requests
 import linecache
@@ -13,7 +15,7 @@ from enum import Enum
 from google.cloud import logging
 from custom_typing import Logger
 from urllib.parse import urlencode
-from typing import Generator, List, Union, Callable, Tuple, Any
+from typing import Generator, List, Union, Tuple, Any, Callable
 from requests.exceptions import ChunkedEncodingError
 from google.auth.exceptions import DefaultCredentialsError
 
@@ -120,33 +122,37 @@ class MeetupStream(object):
             stream = self.__read_stream()  # The stream generator.
             for data_item in stream:
                 attempt_func_call(
-                    lambda: self.trigger_save_stream_data(data_item))
+                    self.trigger_save_stream_data, params=[data_item],
+                    ignored_exceptions=(self.FatalCloudFunctionError,))
                 if 'member' in data_item and \
                         'member_id' in data_item['member']:
                     member_id = data_item['member']['member_id']
                     attempt_func_call(
-                        lambda: self.trigger_save_member_data(member_id))
+                        self.trigger_save_member_data, params=[member_id],
+                        ignored_exceptions=(self.FatalCloudFunctionError,))
+
                 if 'group' in data_item and \
                         'id' in data_item['group']:
                     group_id = data_item['group']['id']
                     attempt_func_call(
-                        lambda: self.trigger_save_group_data(group_id))
+                        self.trigger_save_group_data, params=[group_id],
+                        ignored_exceptions=(self.FatalCloudFunctionError,))
 
     def trigger_http_gcf(self,
                          url: str,
-                         data: dict=None,
-                         params: dict=None):
+                         data: dict = None,
+                         params: dict = None):
         name = url.split('/')[-1]
         if params:
             url = add_url_params(url, params)
         with requests.post(url, json=data) as r:
-            if r.status_code >= 500:
-                raise self.CloudFunctionError(
-                    f'GCF returned an error {r.status_code}. '
-                    f'The response is: {r.text}')
-
+            if r.status_code == http.HTTPStatus.TOO_MANY_REQUESTS or \
+                    r.status_code >= 500:
+                raise self.RetriableCloudFunctionError(r.status_code, r.text)
+            elif r.status_code != http.HTTPStatus.OK:
+                raise self.FatalCloudFunctionError(r.status_code, r.text)
             pprint(f'{name} GCF triggered!',
-                   pformat=BColors.OKGREEN, irreplaceable=False)
+                   pformat=BColors.OKGREEN, replaceable=True)
 
     def trigger_save_stream_data(self, data):
         params = {
@@ -175,6 +181,14 @@ class MeetupStream(object):
         self.trigger_http_gcf(url, params=params)
 
     class CloudFunctionError(Exception):
+        def __init__(self, status_code, response):
+            self.code = status_code,
+            self.response = response
+
+    class FatalCloudFunctionError(CloudFunctionError):
+        pass
+
+    class RetriableCloudFunctionError(CloudFunctionError):
         pass
 
 
@@ -198,7 +212,7 @@ class BColors(Enum):
 def pprint(text: str,
            pformat: Union[BColors, List[BColors], str] = BColors.OKWHITE,
            replace_last: bool = True,
-           irreplaceable: bool = True,
+           replaceable: bool = False,
            timestamp: bool = True,
            timezone: pytz.tzfile = pytz.timezone('US/Eastern')) -> None:
     """
@@ -229,12 +243,12 @@ def pprint(text: str,
     output += style + text + BColors.ENDC.value
 
     if replace_last:
-        sys.stdout.write('\u001b[1A\u001b[2K')
-
+        sys.stdout.write('\0338')
+        sys.stdout.write('\u001b[0J')
     print(output, flush=True)
 
-    if irreplaceable:
-        sys.stdout.write('\n')
+    if not replaceable:
+        sys.stdout.write('\0337')
 
 
 def __connect_gcl(logger_name: str = "Trigger_GCF-Logger") -> Logger:
@@ -272,9 +286,11 @@ def __connect_gcl(logger_name: str = "Trigger_GCF-Logger") -> Logger:
 
 
 def attempt_func_call(api_call: Callable,
+                      params: list = None,
                       num_attempts: int = 10,
-                      sleep_time: float = 1,
-                      ignored_exceptions: Tuple[Exception] = (),
+                      base_sleep_time: float = 1,
+                      added_sleep_time: float = 0.25,
+                      ignored_exceptions: tuple = (),
                       ) -> Tuple[Any, bool]:
     """
     Attempts to call the *Callable* object ``api_call``. If the call fails,
@@ -293,44 +309,55 @@ def attempt_func_call(api_call: Callable,
         whether the call was successful. If the call was not successful,
         None is returned as the return value of api_call.
     """
+    func_str = f'{api_call.__name__}({", ".join([str(p) for p in params])})'
     for attempt in range(num_attempts):
         try:
-            obj = api_call()
-            if LOGGER and attempt:
+            obj = api_call(*params)
+            if attempt:
                 log_struct = {
-                    'desc': f'Successfully called API method.',
-                    'attempts': attempt,
-                    'api_call': str(api_call)}
-                pprint(f'Successfully called API method.\n'
+                    'desc': f'Successfully called the function.',
+                    'attempts': attempt + 1,
+                    'api_call': func_str}
+                if LOGGER:
+                    LOGGER.log_struct(log_struct, severity='INFO')
+                pprint(f'{log_struct["desc"]}\n'
                        f'{json.dumps(log_struct, indent=4)}',
                        pformat=BColors.OKGREEN)
-                LOGGER.log_struct(log_struct, severity='INFO')
             return obj, True
         except ignored_exceptions:
+            log_struct = {
+                'desc': f'Function call failed and was ignored!',
+                'api_call': func_str}
+            log_struct.update(get_exc_info_struct())
+            if LOGGER:  # Log exceptions to Stackdriver-Logging.
+                LOGGER.log_struct(log_struct, severity='WARNING')
+            pprint(f'{log_struct["desc"]}\n'
+                   f'{json.dumps(log_struct, indent=4)}',
+                   pformat=BColors.WARNING)
             return None, False
         except Exception:
-            time.sleep(sleep_time)
-            if LOGGER and not attempt:
-                # Log exceptions to Stackdriver-Logging.
+            if not attempt:
                 log_struct = {
                     'desc': f'API method call attempt was unsuccessful!',
-                    'api_call': str(api_call)}
+                    'api_call': func_str}
                 log_struct.update(get_exc_info_struct())
-                pprint(f'API method call attempt failed!\n'
+                if LOGGER:
+                    LOGGER.log_struct(log_struct, severity='WARNING')
+                pprint(f'{log_struct["desc"]}\n'
                        f'{json.dumps(log_struct, indent=4)}',
                        pformat=BColors.WARNING)
-                LOGGER.log_struct(log_struct, severity='WARNING')
+            time.sleep(base_sleep_time + added_sleep_time * attempt)
             continue
-    if LOGGER:
-        log_struct = {
-            'desc': f'Failed to call API method!',
-            'attempts': num_attempts,
-            'api_call': str(api_call)}
-        pprint(f'Failed to call API method!\n'
-               f'{json.dumps(log_struct, indent=4)}',
-               pformat=BColors.FAIL)
-        LOGGER.log_struct(log_struct, severity='ALERT')
 
+    log_struct = {
+        'desc': f'Failed to call API method!',
+        'attempts': num_attempts,
+        'api_call': func_str}
+    if LOGGER:
+        LOGGER.log_struct(log_struct, severity='ALERT')
+    pprint(f'{log_struct["desc"]}\n'
+           f'{json.dumps(log_struct, indent=4)}',
+           pformat=BColors.FAIL)
     return None, False
 
 
