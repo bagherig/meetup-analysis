@@ -110,7 +110,6 @@ class MeetupStream(object):
                 time.sleep(1)
                 continue
 
-    # noinspection PyTypeChecker
     def trigger_cloud_functions(self):
         """
         Triggers the GCF with url self.http with a POST request. Each POST
@@ -133,19 +132,21 @@ class MeetupStream(object):
                     attempt_func_call(
                         lambda: self.trigger_save_group_data(group_id))
 
-    def trigger_http_gcf(self, url, data: dict=None, params: dict=None):
+    def trigger_http_gcf(self,
+                         url: str,
+                         data: dict=None,
+                         params: dict=None):
         name = url.split('/')[-1]
         if params:
             url = add_url_params(url, params)
-        r = requests.post(url, json=data)
+        with requests.post(url, json=data) as r:
+            if r.status_code >= 500:
+                raise self.CloudFunctionError(
+                    f'GCF returned an error {r.status_code}. '
+                    f'The response is: {r.text}')
 
-        if r.status_code >= 500:
-            raise self.CloudFunctionError(
-                f'GCF returned an error {r.status_code}. '
-                f'The response is:\n{r.text}')
-
-        pprint(f'{name} GCF triggered!',
-               pformat=BColors.OKGREEN, irreplaceable=False)
+            pprint(f'{name} GCF triggered!',
+                   pformat=BColors.OKGREEN, irreplaceable=False)
 
     def trigger_save_stream_data(self, data):
         params = {
@@ -298,32 +299,36 @@ def attempt_func_call(api_call: Callable,
             if LOGGER and attempt:
                 log_struct = {
                     'desc': f'Successfully called API method.',
-                    'attempt': attempt,
+                    'attempts': attempt,
                     'api_call': str(api_call)}
-                log_struct.update(get_exc_info_struct())
-                # noinspection PyTypeChecker
+                pprint(f'Successfully called API method.\n'
+                       f'{json.dumps(log_struct, indent=4)}',
+                       pformat=BColors.OKGREEN)
                 LOGGER.log_struct(log_struct, severity='INFO')
             return obj, True
         except ignored_exceptions:
             return None, False
         except Exception:
             time.sleep(sleep_time)
-            if LOGGER:
+            if LOGGER and not attempt:
                 # Log exceptions to Stackdriver-Logging.
                 log_struct = {
-                    'desc': f'API method call attempt failed!',
-                    'attempt': attempt,
+                    'desc': f'API method call attempt was unsuccessful!',
                     'api_call': str(api_call)}
                 log_struct.update(get_exc_info_struct())
-                # noinspection PyTypeChecker
+                pprint(f'API method call attempt failed!\n'
+                       f'{json.dumps(log_struct, indent=4)}',
+                       pformat=BColors.WARNING)
                 LOGGER.log_struct(log_struct, severity='WARNING')
             continue
     if LOGGER:
         log_struct = {
-            'desc': f'Could not call the API method!',
-            'num_attempts': num_attempts,
+            'desc': f'Failed to call API method!',
+            'attempts': num_attempts,
             'api_call': str(api_call)}
-        # noinspection PyTypeChecker
+        pprint(f'Failed to call API method!\n'
+               f'{json.dumps(log_struct, indent=4)}',
+               pformat=BColors.FAIL)
         LOGGER.log_struct(log_struct, severity='ALERT')
 
     return None, False
