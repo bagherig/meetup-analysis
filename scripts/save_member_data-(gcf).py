@@ -3,11 +3,13 @@
 Created on Fri Jan 11 18:09:12 2019
 @author: moeen
 """
+import sys
 import json
+import traceback
 from typing import Tuple
 from urllib.request import urlopen
 from google.cloud import firestore
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from google.api_core import exceptions
 from json.decoder import JSONDecodeError
 
@@ -37,15 +39,17 @@ def save_member_data(member_id: str,
     try:
         with urlopen(meetup_url) as r:
             data = json.loads(r.read().decode('utf-8'))
-    except JSONDecodeError as e:
-        return str(e), 500
+    except (JSONDecodeError, URLError):
+        return traceback.format_exc(), 500
     except HTTPError as e:
-        return str(e), int(e.code)
+        return traceback.format_exc(), int(e.code)
+    except Exception:
+        return f'Unknown Exception: {traceback.format_exc()}', 499
 
     try:
         DB.collection(collection_name).document(doc_name).set(data, merge=True)
     except exceptions.ServiceUnavailable as e:
-        return str(e), int(e.code)
+        return traceback.format_exc(), int(e.code)
 
     return 'Success!', 200
 
