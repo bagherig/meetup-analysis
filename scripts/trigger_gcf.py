@@ -4,7 +4,6 @@ import pytz
 import json
 import time
 import http
-import term
 import datetime
 import requests
 import linecache
@@ -15,9 +14,9 @@ from enum import Enum
 from google.cloud import logging
 from custom_typing import Logger
 from urllib.parse import urlencode
-from typing import Generator, List, Union, Tuple, Any, Callable
 from requests.exceptions import ChunkedEncodingError
 from google.auth.exceptions import DefaultCredentialsError
+from typing import Generator, List, Union, Tuple, Any, Callable
 
 LOGGER = None
 URLS = ["http://stream.meetup.com/2/event_comments",
