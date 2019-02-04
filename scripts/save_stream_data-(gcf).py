@@ -3,7 +3,9 @@
 Created on Fri Jan 11 18:09:12 2019
 @author: moeen
 """
+import sys
 import datetime
+import traceback
 from typing import Tuple, Union
 from google.cloud import storage
 from google.api_core import exceptions
@@ -37,10 +39,11 @@ def save_stream_data(data: object,
         gcs_file = gcs_bucket.blob(filename)
         gcs_file.upload_from_string(str(data))
     except exceptions.ServiceUnavailable as e:
-        return str(e), int(e.code)
-    except (ConnectionResetError, ProtocolError) as e:
-        return str(e), 500
-
+        return traceback.format_exc(), int(e.code)
+    except (ConnectionResetError, ProtocolError):
+        return traceback.format_exc(), 500
+    except Exception:
+        return f'Unknown Exception: {traceback.format_exc()}', 499
     return 'Success!', 200
 
 

@@ -6,6 +6,7 @@ import time
 import http
 import datetime
 import requests
+import traceback
 import linecache
 import threading
 import numpy as np
@@ -20,6 +21,7 @@ from typing import Generator, List, Union, Tuple, Any, Callable
 import subprocess
 
 LOGGER = None
+LOGGER_NAME = "Trigger_GCF-Logger"
 URLS = ["http://stream.meetup.com/2/event_comments",
         "http://stream.meetup.com/2/open_events",
         "http://stream.meetup.com/2/open_venues?trickle",
@@ -96,7 +98,6 @@ class MeetupStream(object):
                 log_struct = {'desc': 'Chunked error while reading stream.',
                               'stream_url': url}
                 log_struct.update(get_exc_info_struct())
-                # noinspection PyTypeChecker
                 LOGGER.log_struct(log_struct, severity='NOTICE')
                 time.sleep(1)
                 continue
@@ -107,7 +108,6 @@ class MeetupStream(object):
                 pprint(f"Error while reading stream:\n"
                        f"{json.dumps(log_struct, indent=4)}",
                        pformat=BColors.FAIL)
-                # noinspection PyTypeChecker
                 LOGGER.log_struct(log_struct, severity='EMERGENCY')
                 time.sleep(1)
                 continue
@@ -123,20 +123,23 @@ class MeetupStream(object):
             for data_item in stream:
                 attempt_func_call(
                     self.trigger_save_stream_data, params=[data_item],
-                    ignored_exceptions=(self.FatalCloudFunctionError,))
+                    ignored_exceptions=(self.FatalCloudFunctionError,),
+                    tag=self.prefix)
                 if 'member' in data_item and \
                         'member_id' in data_item['member']:
                     member_id = data_item['member']['member_id']
                     attempt_func_call(
                         self.trigger_save_member_data, params=[member_id],
-                        ignored_exceptions=(self.FatalCloudFunctionError,))
+                        ignored_exceptions=(self.FatalCloudFunctionError,),
+                        tag=self.prefix)
 
                 if 'group' in data_item and \
                         'id' in data_item['group']:
                     group_id = data_item['group']['id']
                     attempt_func_call(
                         self.trigger_save_group_data, params=[group_id],
-                        ignored_exceptions=(self.FatalCloudFunctionError,))
+                        ignored_exceptions=(self.FatalCloudFunctionError,),
+                        tag=self.prefix)
 
     def trigger_http_gcf(self,
                          url: str,
@@ -246,7 +249,7 @@ def pprint(text: str,
         print(output, end='', flush=True)
 
 
-def __connect_gcl(logger_name: str = "Trigger_GCF-Logger") -> Logger:
+def __connect_gcl(logger_name: str) -> Logger:
     """
     Sets the ``GOOGLE_APPLICATION_CREDENTIALS`` environmental variable for
     connecting to Stackdriver-Logging and initiates a new logger with name
@@ -286,6 +289,7 @@ def attempt_func_call(api_call: Callable,
                       base_sleep_time: float = 1,
                       added_sleep_time: float = 0.25,
                       ignored_exceptions: tuple = (),
+                      tag: str = None
                       ) -> Tuple[Any, bool]:
     """
     Attempts to call the *Callable* object ``api_call``. If the call fails,
@@ -304,7 +308,12 @@ def attempt_func_call(api_call: Callable,
         whether the call was successful. If the call was not successful,
         None is returned as the return value of api_call.
     """
-    func_str = f'{api_call.__name__}({", ".join([str(p) for p in params])})'
+    try:
+        func_params = ', '.join(list(api_call.__annotations__.keys())[0:-1])
+        func_str = f'{api_call.__name__}({func_params})'
+    except Exception:
+        func_str = str(api_call)
+
     for attempt in range(num_attempts):
         try:
             obj = api_call(*params)
@@ -312,7 +321,8 @@ def attempt_func_call(api_call: Callable,
                 log_struct = {
                     'desc': f'Successfully called the function.',
                     'attempts': attempt + 1,
-                    'api_call': func_str}
+                    'api_call': func_str,
+                    'tag': tag or str(params)}
                 if LOGGER:
                     LOGGER.log_struct(log_struct, severity='INFO')
                 pprint(f'{log_struct["desc"]}\n'
@@ -322,7 +332,8 @@ def attempt_func_call(api_call: Callable,
         except ignored_exceptions:
             log_struct = {
                 'desc': f'Function call failed and was ignored!',
-                'api_call': func_str}
+                'api_call': func_str,
+                'tag': tag or str(params)}
             log_struct.update(get_exc_info_struct())
             if LOGGER:  # Log exceptions to Stackdriver-Logging.
                 LOGGER.log_struct(log_struct, severity='WARNING')
@@ -334,7 +345,8 @@ def attempt_func_call(api_call: Callable,
             if not attempt:
                 log_struct = {
                     'desc': f'API method call attempt was unsuccessful!',
-                    'api_call': func_str}
+                    'api_call': func_str,
+                    'tag': tag or str(params)}
                 log_struct.update(get_exc_info_struct())
                 if LOGGER:
                     LOGGER.log_struct(log_struct, severity='WARNING')
@@ -347,7 +359,8 @@ def attempt_func_call(api_call: Callable,
     log_struct = {
         'desc': f'Failed to call API method!',
         'attempts': num_attempts,
-        'api_call': func_str}
+        'api_call': func_str,
+        'tag': tag or str(params)}
     if LOGGER:
         LOGGER.log_struct(log_struct, severity='ALERT')
     pprint(f'{log_struct["desc"]}\n'
@@ -401,31 +414,20 @@ def get_exc_info_struct() -> dict:
     :return: A dictionary containing information about the exception that is
         currently being handled.
     """
-    exc_struct = {}
-
     try:
         exc_type, exc_obj, tb = sys.exc_info()
-        if not tb:  # This is None if no exception is being handled.
-            return exc_struct
-        f = tb.tb_frame
-        line_num = tb.tb_lineno  # Line number.
-        filename = f.f_code.co_filename  # File name.
-        linecache.checkcache(filename)
-        line = linecache.getline(filename, line_num, f.f_globals)  # Line text.
+        trace = traceback.format_exc()
+
         exc_struct = {
             'exc_info': {
-                'exc_msg': str(exc_obj),
-                'filename': filename,
-                'line_num': line_num,
-                'line': line.strip(),
-                'exc_obj': repr(exc_obj)
+                'exc_obj': repr(exc_obj),
+                'traceback': trace
             }
         }
     except Exception:
         pprint(f'Error while getting exception info.', pformat=BColors.WARNING)
         # Log exceptions to Stackdriver-Logging.
         log_text = 'Error while getting exception info.'
-        # noinspection PyTypeChecker
         LOGGER.log_text(log_text, severity='ERROR')
         exc_struct = {'exc_info': 'Error: Could not retrieve exception info.'}
 
@@ -481,7 +483,7 @@ def main():
            pformat=[BColors.TITLE, BColors.BOLD], timestamp=False)
 
     global LOGGER
-    LOGGER = __connect_gcl()
+    LOGGER = __connect_gcl(LOGGER_NAME)
     with open('../config.json') as json_configs_file:
         configs = json.load(json_configs_file)
     save_data(stream_urls=URLS,
