@@ -7,6 +7,7 @@ import datetime
 from typing import Tuple, Union
 from google.cloud import storage
 from google.api_core import exceptions
+from urllib3.exceptions import ProtocolError
 
 GS = storage.Client()
 
@@ -37,7 +38,7 @@ def save_stream_data(data: object,
         gcs_file.upload_from_string(str(data))
     except exceptions.ServiceUnavailable as e:
         return int(e.code)
-    except ConnectionResetError:
+    except (ConnectionResetError, ProtocolError):
         return 500
 
     return 200
