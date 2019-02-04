@@ -151,7 +151,7 @@ class MeetupStream(object):
             elif r.status_code != http.HTTPStatus.OK:
                 raise self.FatalCloudFunctionError(r.status_code, r.text)
             pprint(f'{name} GCF triggered!',
-                   pformat=BColors.OKGREEN, replaceable=True)
+                   pformat=BColors.OKBLUE, replace_last=True, replaceable=True)
 
     def trigger_save_stream_data(self, data):
         params = {
@@ -210,7 +210,7 @@ class BColors(Enum):
 
 def pprint(text: str,
            pformat: Union[BColors, List[BColors], str] = BColors.OKWHITE,
-           replace_last: bool = True,
+           replace_last: bool = False,
            replaceable: bool = False,
            timestamp: bool = True,
            timezone: pytz.tzfile = pytz.timezone('US/Eastern')) -> None:
@@ -244,8 +244,10 @@ def pprint(text: str,
     if replace_last:
         sys.stdout.write('\0338')
         sys.stdout.write('\u001b[0J')
-    print(output, flush=True)
+    if replaceable:
+        sys.stdout.write('\0337')
 
+    print(output, flush=True)
     if not replaceable:
         sys.stdout.write('\0337')
 
