@@ -15,7 +15,7 @@ GS = storage.Client()
 def save_stream_data(data: object,
                      data_id: Union[str, int],
                      bucket_name: str,
-                     label: str = 'meetup') -> int:
+                     label: str = 'meetup') -> Tuple[str, int]:
     """
     Stores ``data`` in a GCS bucket named ``bucket_name``. The data is
     stored in a folder named ``label``. ``data_id`` and the current
@@ -37,11 +37,11 @@ def save_stream_data(data: object,
         gcs_file = gcs_bucket.blob(filename)
         gcs_file.upload_from_string(str(data))
     except exceptions.ServiceUnavailable as e:
-        return int(e.code)
-    except (ConnectionResetError, ProtocolError):
-        return 500
+        return str(e), int(e.code)
+    except (ConnectionResetError, ProtocolError) as e:
+        return str(e), 500
 
-    return 200
+    return 'Success!', 200
 
 
 def main(request) -> Tuple[str, int]:
@@ -76,9 +76,9 @@ def main(request) -> Tuple[str, int]:
     else:
         data_id = data['id']
 
-    status_code = save_stream_data(data=data,
-                                   data_id=data_id,
-                                   bucket_name=bucket_name,
-                                   label=label)
+    response = save_stream_data(data=data,
+                                data_id=data_id,
+                                bucket_name=bucket_name,
+                                label=label)
 
-    return "Finished!", status_code
+    return response

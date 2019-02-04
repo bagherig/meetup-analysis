@@ -16,7 +16,7 @@ DB = firestore.Client()
 
 def save_group_data(group_id: str,
                     meetup_key: str,
-                    collection_name: str) -> int:
+                    collection_name: str) -> Tuple[str, int]:
     """
     Stores ``data`` in a Firestore repository named ``rep_name``. The
     data is stored in a folder named ``label``. ``data_id`` and the
@@ -37,15 +37,17 @@ def save_group_data(group_id: str,
     try:
         with urlopen(meetup_url) as r:
             data = json.loads(r.read().decode('utf-8'))
-    except (JSONDecodeError, HTTPError):
-        return 500
+    except JSONDecodeError as e:
+        return str(e), 500
+    except HTTPError as e:
+        return str(e), int(e.code)
 
     try:
         DB.collection(collection_name).document(doc_name).set(data, merge=True)
     except exceptions.ServiceUnavailable as e:
-        return int(e.code)
+        return str(e), int(e.code)
 
-    return 200
+    return 'Success!', 200
 
 
 def main(request) -> Tuple[str, int]:
@@ -69,8 +71,8 @@ def main(request) -> Tuple[str, int]:
     if not all([group_id, meetup_key, collection_name]):
         return f'A parameter was not provided!', 400
 
-    status_code = save_group_data(group_id=group_id,
-                                  meetup_key=meetup_key,
-                                  collection_name=collection_name)
+    response = save_group_data(group_id=group_id,
+                               meetup_key=meetup_key,
+                               collection_name=collection_name)
 
-    return "Finished!", status_code
+    return response
