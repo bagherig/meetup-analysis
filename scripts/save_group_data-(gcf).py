@@ -7,6 +7,7 @@ import json
 from typing import Tuple
 from google.cloud import firestore
 from urllib.request import urlopen
+from urllib.error import HTTPError
 from google.api_core import exceptions
 from json.decoder import JSONDecodeError
 
@@ -36,7 +37,7 @@ def save_group_data(group_id: str,
     try:
         with urlopen(meetup_url) as r:
             data = json.loads(r.read().decode('utf-8'))
-    except JSONDecodeError:
+    except (JSONDecodeError, HTTPError):
         return 500
 
     try:
