@@ -4,10 +4,10 @@ import pytz
 import json
 import time
 import http
+import inspect
 import datetime
 import requests
 import traceback
-import linecache
 import threading
 import numpy as np
 import urllib.parse as urlparse
@@ -417,10 +417,13 @@ def get_exc_info_struct() -> dict:
     try:
         exc_type, exc_obj, tb = sys.exc_info()
         trace = traceback.format_exc()
+        params = inspect.signature(exc_obj.__init__)
 
         exc_struct = {
             'exc_info': {
-                'exc_obj': repr(exc_obj),
+                'exc_type': exc_type,
+                'exc_args': {key: exc_obj.args[i]
+                             for i, key in enumerate(params.parameters)},
                 'traceback': trace
             }
         }
