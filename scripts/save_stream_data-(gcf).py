@@ -40,7 +40,7 @@ def save_stream_data(data: object,
         gcs_file.upload_from_string(str(data))
     except exceptions.ServiceUnavailable as e:
         return traceback.format_exc(), int(e.code)
-    except (ConnectionResetError, ProtocolError):
+    except (ConnectionResetError, ConnectionError, ProtocolError):
         return traceback.format_exc(), 500
     except Exception:
         return f'Unknown Exception: {traceback.format_exc()}', 599
