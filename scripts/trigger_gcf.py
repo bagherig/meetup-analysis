@@ -346,7 +346,7 @@ def attempt_func_call(api_call: Callable,
                 log_struct = {
                     'desc': f'API method call attempt was unsuccessful!',
                     'api_call': func_str,
-                    'tag': tag or str(params)}
+                    'tag': tag or 'N/A'}
                 log_struct.update(get_exc_info_struct())
                 if LOGGER:
                     LOGGER.log_struct(log_struct, severity='WARNING')
@@ -379,14 +379,15 @@ def get_exc_info_struct() -> dict:
     """
     try:
         exc_type, exc_obj, tb = sys.exc_info()
+        args = exc_obj.args
+        params = inspect.signature(exc_obj.__init__).parameters
         trace = traceback.format_exc()
-        params = inspect.signature(exc_obj.__init__)
 
         exc_struct = {
             'exc_info': {
                 'exc_type': exc_type,
-                'exc_args': {key: exc_obj.args[i]
-                             for i, key in enumerate(params.parameters)},
+                'exc_args': {key: (args[i] if i <= len(args) - 1 else None)
+                             for i, key in enumerate(params)},
                 'traceback': trace
             }
         }
