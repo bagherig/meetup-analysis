@@ -317,14 +317,15 @@ def attempt_func_call(api_call: Callable,
     for attempt in range(num_attempts):
         try:
             obj = api_call(*params)
-            if attempt:
+            if True:#attempt:
                 log_struct = {
                     'desc': f'Successfully called the function.',
                     'attempts': attempt + 1,
                     'api_call': func_str,
                     'tag': tag or str(params)}
-                pprint(f'{log_struct["desc"]}\n'
-                       f'{json.dumps(log_struct, indent=4)}',
+                pprint(f'{log_struct["desc"]}\n%s' %
+                       json.dumps(log_struct, indent=1,
+                                  separators=('\n', ':\n')),
                        pformat=BColors.OKGREEN)
                 if LOGGER:
                     LOGGER.log_struct(log_struct, severity='INFO')
@@ -335,9 +336,10 @@ def attempt_func_call(api_call: Callable,
                 'api_call': func_str,
                 'tag': tag or str(params)}
             log_struct.update(get_exc_info_struct())
-            pprint(f'{log_struct["desc"]}\n'
-                   f'{json.dumps(log_struct, indent=4)}',
-                   pformat=BColors.WARNING)
+            pprint(f'{log_struct["desc"]}\n%s' %
+                   json.dumps(log_struct, indent=1,
+                              separators=('\n', ':\n')),
+                   pformat=BColors.FAIL)
             if LOGGER:  # Log exceptions to Stackdriver-Logging.
                 LOGGER.log_struct(log_struct, severity='WARNING')
             return None, False
@@ -348,8 +350,9 @@ def attempt_func_call(api_call: Callable,
                     'api_call': func_str,
                     'tag': tag or 'N/A'}
                 log_struct.update(get_exc_info_struct())
-                pprint(f'{log_struct["desc"]}\n'
-                       f'{json.dumps(log_struct, indent=4)}',
+                pprint(f'{log_struct["desc"]}\n%s' %
+                       json.dumps(log_struct, indent=1,
+                                  separators=('\n', ':\n')),
                        pformat=BColors.WARNING)
                 if LOGGER:
                     LOGGER.log_struct(log_struct, severity='WARNING')
@@ -363,8 +366,9 @@ def attempt_func_call(api_call: Callable,
         'tag': tag or str(params)}
     if LOGGER:
         LOGGER.log_struct(log_struct, severity='ALERT')
-    pprint(f'{log_struct["desc"]}\n'
-           f'{json.dumps(log_struct, indent=4)}',
+    pprint(f'{log_struct["desc"]}\n%s' %
+           json.dumps(log_struct, indent=1,
+                      separators=('\n', ':\n')),
            pformat=BColors.FAIL)
     return None, False
 
