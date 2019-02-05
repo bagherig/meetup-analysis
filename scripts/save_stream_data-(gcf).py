@@ -43,8 +43,9 @@ def save_stream_data(data: object,
     except (ConnectionResetError, ProtocolError):
         return traceback.format_exc(), 500
     except Exception:
-        return f'Unknown Exception: {traceback.format_exc()}', 499
-    return 'Success!', 200
+        return f'Unknown Exception: {traceback.format_exc()}', 599
+    else:
+        return 'Success!', 200
 
 
 def main(request) -> Tuple[str, int]:
