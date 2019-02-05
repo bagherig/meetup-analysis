@@ -317,7 +317,7 @@ def attempt_func_call(api_call: Callable,
     for attempt in range(num_attempts):
         try:
             obj = api_call(*params)
-            if True:#attempt:
+            if attempt:
                 log_struct = {
                     'desc': f'Successfully called the function.',
                     'attempts': attempt + 1,
