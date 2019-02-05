@@ -369,6 +369,38 @@ def attempt_func_call(api_call: Callable,
     return None, False
 
 
+def get_exc_info_struct() -> dict:
+    """
+    Returns a dictionary containing information about the exception that is
+    currently being handled.
+
+    :return: A dictionary containing information about the exception that is
+        currently being handled.
+    """
+    try:
+        exc_type, exc_obj, tb = sys.exc_info()
+        trace = traceback.format_exc()
+        params = inspect.signature(exc_obj.__init__)
+
+        exc_struct = {
+            'exc_info': {
+                'exc_type': exc_type,
+                'exc_args': {key: exc_obj.args[i]
+                             for i, key in enumerate(params.parameters)},
+                'traceback': trace
+            }
+        }
+    except Exception as e:
+        pprint(f'Error while getting exception info: {str(e)}',
+               pformat=BColors.WARNING)
+        # Log exceptions to Stackdriver-Logging.
+        log_text = f'Error while getting exception info: {str(e)}'
+        LOGGER.log_text(log_text, severity='ERROR')
+        exc_struct = {'exc_info': 'Error: Could not retrieve exception info.'}
+
+    return exc_struct
+
+
 def add_url_params(url: str,
                    params: dict) -> str:
     """
@@ -404,37 +436,6 @@ def add_url_params(url: str,
         LOGGER.log_struct(log_struct, severity='ERROR')
 
     return new_url
-
-
-def get_exc_info_struct() -> dict:
-    """
-    Returns a dictionary containing information about the exception that is
-    currently being handled.
-
-    :return: A dictionary containing information about the exception that is
-        currently being handled.
-    """
-    try:
-        exc_type, exc_obj, tb = sys.exc_info()
-        trace = traceback.format_exc()
-        params = inspect.signature(exc_obj.__init__)
-
-        exc_struct = {
-            'exc_info': {
-                'exc_type': exc_type,
-                'exc_args': {key: exc_obj.args[i]
-                             for i, key in enumerate(params.parameters)},
-                'traceback': trace
-            }
-        }
-    except Exception:
-        pprint(f'Error while getting exception info.', pformat=BColors.WARNING)
-        # Log exceptions to Stackdriver-Logging.
-        log_text = 'Error while getting exception info.'
-        LOGGER.log_text(log_text, severity='ERROR')
-        exc_struct = {'exc_info': 'Error: Could not retrieve exception info.'}
-
-    return exc_struct
 
 
 def write_stream(stream_url: str,
