@@ -385,8 +385,9 @@ def get_exc_info_struct() -> dict:
 
         exc_struct = {
             'exc_info': {
-                'exc_type': exc_type,
-                'exc_args': {key: (args[i] if i <= len(args) - 1 else None)
+                'exc_type': str(exc_type),
+                'exc_args': {str(key): (str(args[i])
+                                        if i <= len(args) - 1 else None)
                              for i, key in enumerate(params)},
                 'traceback': trace
             }
