@@ -323,11 +323,11 @@ def attempt_func_call(api_call: Callable,
                     'attempts': attempt + 1,
                     'api_call': func_str,
                     'tag': tag or str(params)}
-                if LOGGER:
-                    LOGGER.log_struct(log_struct, severity='INFO')
                 pprint(f'{log_struct["desc"]}\n'
                        f'{json.dumps(log_struct, indent=4)}',
                        pformat=BColors.OKGREEN)
+                if LOGGER:
+                    LOGGER.log_struct(log_struct, severity='INFO')
             return obj, True
         except ignored_exceptions:
             log_struct = {
@@ -335,11 +335,11 @@ def attempt_func_call(api_call: Callable,
                 'api_call': func_str,
                 'tag': tag or str(params)}
             log_struct.update(get_exc_info_struct())
-            if LOGGER:  # Log exceptions to Stackdriver-Logging.
-                LOGGER.log_struct(log_struct, severity='WARNING')
             pprint(f'{log_struct["desc"]}\n'
                    f'{json.dumps(log_struct, indent=4)}',
                    pformat=BColors.WARNING)
+            if LOGGER:  # Log exceptions to Stackdriver-Logging.
+                LOGGER.log_struct(log_struct, severity='WARNING')
             return None, False
         except Exception:
             if not attempt:
@@ -348,11 +348,11 @@ def attempt_func_call(api_call: Callable,
                     'api_call': func_str,
                     'tag': tag or 'N/A'}
                 log_struct.update(get_exc_info_struct())
-                if LOGGER:
-                    LOGGER.log_struct(log_struct, severity='WARNING')
                 pprint(f'{log_struct["desc"]}\n'
                        f'{json.dumps(log_struct, indent=4)}',
                        pformat=BColors.WARNING)
+                if LOGGER:
+                    LOGGER.log_struct(log_struct, severity='WARNING')
             time.sleep(base_sleep_time + added_sleep_time * attempt)
             continue
 

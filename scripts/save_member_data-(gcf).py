@@ -43,8 +43,6 @@ def save_member_data(member_id: str,
         return traceback.format_exc(), 500
     except HTTPError as e:
         return traceback.format_exc(), int(e.code)
-    except Exception:
-        return f'Unknown Exception: {traceback.format_exc()}', 499
 
     try:
         DB.collection(collection_name).document(doc_name).set(data, merge=True)
