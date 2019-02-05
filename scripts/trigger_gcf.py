@@ -325,7 +325,7 @@ def attempt_func_call(api_call: Callable,
                     'tag': tag or str(params)}
                 pprint(f'{log_struct["desc"]}\n%s' %
                        json.dumps(log_struct, indent=1,
-                                  separators=('\n', ':\n')),
+                                  separators=(',', ':\n')),
                        pformat=BColors.OKGREEN)
                 if LOGGER:
                     LOGGER.log_struct(log_struct, severity='INFO')
@@ -390,7 +390,7 @@ def get_exc_info_struct() -> dict:
         exc_struct = {
             'exc_info': {
                 'exc_type': str(exc_type),
-                'exc_args': {str(key): (args[i]
+                'exc_args': {str(key): (str(args[i])
                                         if i <= len(args) - 1 else None)
                              for i, key in enumerate(params)},
                 'traceback': trace
