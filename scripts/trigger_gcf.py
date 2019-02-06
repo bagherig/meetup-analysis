@@ -15,6 +15,7 @@ from enum import Enum
 from google.cloud import logging
 from custom_typing import Logger
 from urllib.parse import urlencode
+from collections.abc import Iterable
 from requests.exceptions import ChunkedEncodingError
 from google.auth.exceptions import DefaultCredentialsError
 from typing import Generator, List, Union, Tuple, Any, Callable
@@ -324,8 +325,7 @@ def attempt_func_call(api_call: Callable,
                     'api_call': func_str,
                     'tag': tag or str(params)}
                 pprint(f'{log_struct["desc"]}\n%s' %
-                       json.dumps(log_struct, indent=1,
-                                  separators=(',', ':\n')),
+                       json.dumps(log_struct, indent=2),
                        pformat=BColors.OKGREEN)
                 if LOGGER:
                     LOGGER.log_struct(log_struct, severity='INFO')
@@ -390,7 +390,8 @@ def get_exc_info_struct() -> dict:
         exc_struct = {
             'exc_info': {
                 'exc_type': str(exc_type),
-                'exc_args': {str(key): (str(args[i])
+                'exc_args': {str(key): (str(args[i]).replace('\n', '; ')
+                                        .replace('\t', '*')
                                         if i <= len(args) - 1 else None)
                              for i, key in enumerate(params)},
                 'traceback': trace
