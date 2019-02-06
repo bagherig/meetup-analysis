@@ -394,7 +394,7 @@ def get_exc_info_struct() -> dict:
                                         .replace('\t', '*')
                                         if i <= len(args) - 1 else None)
                              for i, key in enumerate(params)},
-                'traceback': trace
+                'traceback': trace.replace('\n', '; ').replace('\t', '*')
             }
         }
     except Exception as e:
