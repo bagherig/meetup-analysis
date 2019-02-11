@@ -4,6 +4,7 @@ import pytz
 import json
 import time
 import http
+import codecs
 import inspect
 import datetime
 import requests
@@ -287,7 +288,7 @@ def attempt_func_call(api_call: Callable,
                       params: list = None,
                       num_attempts: int = 10,
                       base_sleep_time: float = 1,
-                      added_sleep_time: float = 0.25,
+                      added_sleep_time: float = 0.5,
                       ignored_exceptions: tuple = (),
                       tag: str = None
                       ) -> Tuple[Any, bool]:
@@ -323,8 +324,7 @@ def attempt_func_call(api_call: Callable,
                     'attempts': attempt + 1,
                     'api_call': func_str,
                     'tag': tag or str(params)}
-                pprint(f'{log_struct["desc"]}\n%s' %
-                       json.dumps(log_struct, indent=4).replace('\\n', '\n'),
+                pprint(f'{log_struct["desc"]}\n%s' % pretty_json(log_struct),
                        pformat=BColors.OKGREEN)
                 if LOGGER:
                     LOGGER.log_struct(log_struct, severity='INFO')
@@ -335,8 +335,7 @@ def attempt_func_call(api_call: Callable,
                 'api_call': func_str,
                 'tag': tag or str(params)}
             log_struct.update(get_exc_info_struct())
-            pprint(f'{log_struct["desc"]}\n%s' %
-                   json.dumps(log_struct, indent=4).replace('\\n', '\n'),
+            pprint(f'{log_struct["desc"]}\n%s' % pretty_json(log_struct),
                    pformat=BColors.FAIL)
             if LOGGER:  # Log exceptions to Stackdriver-Logging.
                 LOGGER.log_struct(log_struct, severity='WARNING')
@@ -348,12 +347,11 @@ def attempt_func_call(api_call: Callable,
                     'api_call': func_str,
                     'tag': tag or 'N/A'}
                 log_struct.update(get_exc_info_struct())
-                pprint(f'{log_struct["desc"]}\n%s' %
-                       json.dumps(log_struct, indent=4).replace('\\n', '\n'),
+                pprint(f'{log_struct["desc"]}\n%s' % pretty_json(log_struct),
                        pformat=BColors.WARNING)
                 if LOGGER:
                     LOGGER.log_struct(log_struct, severity='WARNING')
-            time.sleep(base_sleep_time + added_sleep_time * attempt)
+                time.sleep(base_sleep_time + added_sleep_time * attempt)
             continue
 
     log_struct = {
@@ -363,8 +361,7 @@ def attempt_func_call(api_call: Callable,
         'tag': tag or str(params)}
     if LOGGER:
         LOGGER.log_struct(log_struct, severity='ALERT')
-    pprint(f'{log_struct["desc"]}\n%s' %
-           json.dumps(log_struct, indent=4).replace('\\n', '\n'),
+    pprint(f'{log_struct["desc"]}\n%s' % pretty_json(log_struct),
            pformat=BColors.FAIL)
     return None, False
 
@@ -398,7 +395,7 @@ def get_exc_info_struct() -> dict:
                         )
                     for i, key in enumerate(params)
                 },
-                'traceback': f'\{{\n{trace}\n}}'
+                'traceback': f'{{\n{trace}\n}}'
             }
         }
     except Exception as e:
@@ -410,6 +407,10 @@ def get_exc_info_struct() -> dict:
         exc_struct = {'exc_info': 'Error: Could not retrieve exception info.'}
 
     return exc_struct
+
+
+def pretty_json(json_str):
+    return codecs.decode(json.dumps(jj, indent=4), 'unicode_escape')
 
 
 def add_url_params(url: str,
