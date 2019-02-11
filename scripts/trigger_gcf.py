@@ -286,9 +286,10 @@ def __connect_gcl(logger_name: str) -> Logger:
 
 def attempt_func_call(api_call: Callable,
                       params: list = None,
-                      num_attempts: int = 10,
+                      num_attempts: int = 50,
                       base_sleep_time: float = 1,
-                      added_sleep_time: float = 0.5,
+                      added_sleep_time: float = 1,
+                      max_sleep: float = 10,
                       ignored_exceptions: tuple = (),
                       tag: str = None
                       ) -> Tuple[Any, bool]:
@@ -351,7 +352,8 @@ def attempt_func_call(api_call: Callable,
                        pformat=BColors.WARNING)
                 if LOGGER:
                     LOGGER.log_struct(log_struct, severity='WARNING')
-                time.sleep(base_sleep_time + added_sleep_time * attempt)
+                time.sleep(min(base_sleep_time + added_sleep_time * attempt,
+                               max_sleep))
             continue
 
     log_struct = {
