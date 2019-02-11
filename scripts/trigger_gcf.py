@@ -324,7 +324,7 @@ def attempt_func_call(api_call: Callable,
                     'api_call': func_str,
                     'tag': tag or str(params)}
                 pprint(f'{log_struct["desc"]}\n%s' %
-                       json.dumps(log_struct, indent=2),
+                       json.dumps(log_struct, indent=4).replace('\\n', '\n'),
                        pformat=BColors.OKGREEN)
                 if LOGGER:
                     LOGGER.log_struct(log_struct, severity='INFO')
@@ -336,8 +336,7 @@ def attempt_func_call(api_call: Callable,
                 'tag': tag or str(params)}
             log_struct.update(get_exc_info_struct())
             pprint(f'{log_struct["desc"]}\n%s' %
-                   json.dumps(log_struct, indent=1,
-                              separators=('\n', ': ')),
+                   json.dumps(log_struct, indent=4).replace('\\n', '\n'),
                    pformat=BColors.FAIL)
             if LOGGER:  # Log exceptions to Stackdriver-Logging.
                 LOGGER.log_struct(log_struct, severity='WARNING')
@@ -350,8 +349,7 @@ def attempt_func_call(api_call: Callable,
                     'tag': tag or 'N/A'}
                 log_struct.update(get_exc_info_struct())
                 pprint(f'{log_struct["desc"]}\n%s' %
-                       json.dumps(log_struct, indent=1,
-                                  separators=('\n', ': ')),
+                       json.dumps(log_struct, indent=4).replace('\\n', '\n'),
                        pformat=BColors.WARNING)
                 if LOGGER:
                     LOGGER.log_struct(log_struct, severity='WARNING')
@@ -366,8 +364,7 @@ def attempt_func_call(api_call: Callable,
     if LOGGER:
         LOGGER.log_struct(log_struct, severity='ALERT')
     pprint(f'{log_struct["desc"]}\n%s' %
-           json.dumps(log_struct, indent=1,
-                      separators=('\n', ': ')),
+           json.dumps(log_struct, indent=4).replace('\\n', '\n'),
            pformat=BColors.FAIL)
     return None, False
 
@@ -443,10 +440,9 @@ def add_url_params(url: str,
             'url': url,
             'params': params}
         log_struct.update(get_exc_info_struct())
-        pprint(f'Error while adding URL params.\n'
-               f'{json.dumps(log_struct, indent=4)}',
+        pprint("Error while adding URL params.\n%s" %
+               json.dumps(log_struct, indent=4).replace('\\n', '\n'),
                pformat=BColors.WARNING)
-        # noinspection PyTypeChecker
         LOGGER.log_struct(log_struct, severity='ERROR')
 
     return new_url
