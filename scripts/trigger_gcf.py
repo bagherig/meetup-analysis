@@ -410,7 +410,7 @@ def get_exc_info_struct() -> dict:
 
 
 def pretty_json(json_str):
-    return codecs.decode(json.dumps(jj, indent=4), 'unicode_escape')
+    return codecs.decode(json.dumps(json_str, indent=4), 'unicode_escape')
 
 
 def add_url_params(url: str,
