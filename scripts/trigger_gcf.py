@@ -15,7 +15,6 @@ from enum import Enum
 from google.cloud import logging
 from custom_typing import Logger
 from urllib.parse import urlencode
-from collections.abc import Iterable
 from requests.exceptions import ChunkedEncodingError
 from google.auth.exceptions import DefaultCredentialsError
 from typing import Generator, List, Union, Tuple, Any, Callable
@@ -338,7 +337,7 @@ def attempt_func_call(api_call: Callable,
             log_struct.update(get_exc_info_struct())
             pprint(f'{log_struct["desc"]}\n%s' %
                    json.dumps(log_struct, indent=1,
-                              separators=('\n', ':\n')),
+                              separators=('\n', ': ')),
                    pformat=BColors.FAIL)
             if LOGGER:  # Log exceptions to Stackdriver-Logging.
                 LOGGER.log_struct(log_struct, severity='WARNING')
@@ -352,7 +351,7 @@ def attempt_func_call(api_call: Callable,
                 log_struct.update(get_exc_info_struct())
                 pprint(f'{log_struct["desc"]}\n%s' %
                        json.dumps(log_struct, indent=1,
-                                  separators=('\n', ':\n')),
+                                  separators=('\n', ': ')),
                        pformat=BColors.WARNING)
                 if LOGGER:
                     LOGGER.log_struct(log_struct, severity='WARNING')
@@ -368,7 +367,7 @@ def attempt_func_call(api_call: Callable,
         LOGGER.log_struct(log_struct, severity='ALERT')
     pprint(f'{log_struct["desc"]}\n%s' %
            json.dumps(log_struct, indent=1,
-                      separators=('\n', ':\n')),
+                      separators=('\n', ': ')),
            pformat=BColors.FAIL)
     return None, False
 
@@ -390,11 +389,19 @@ def get_exc_info_struct() -> dict:
         exc_struct = {
             'exc_info': {
                 'exc_type': str(exc_type),
-                'exc_args': {str(key): (str(args[i]).replace('\n', '; ')
-                                        .replace('\t', '*')
-                                        if i <= len(args) - 1 else None)
-                             for i, key in enumerate(params)},
-                'traceback': trace.replace('\n', '; ').replace('\t', '*')
+                'exc_args': {
+                    str(key):
+                        (
+                            (
+                                f'\{{\n{str(args[i])}\n}}'
+                                if '\n' in str(args[i])
+                                else str(args[i])
+                            )
+                            if i <= len(args) - 1 else None
+                        )
+                    for i, key in enumerate(params)
+                },
+                'traceback': f'\{{\n{trace}\n}}'
             }
         }
     except Exception as e:
