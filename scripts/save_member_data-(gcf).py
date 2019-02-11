@@ -3,15 +3,14 @@
 Created on Fri Jan 11 18:09:12 2019
 @author: moeen
 """
-import sys
 import json
 import traceback
 from typing import Tuple
 from urllib.request import urlopen
 from google.cloud import firestore
-from urllib.error import HTTPError, URLError
-from google.api_core import exceptions
 from json.decoder import JSONDecodeError
+from urllib.error import HTTPError, URLError
+from google.api_core.exceptions import ServiceUnavailable, DeadlineExceeded
 
 DB = firestore.Client()
 
@@ -46,7 +45,7 @@ def save_member_data(member_id: str,
 
     try:
         DB.collection(collection_name).document(doc_name).set(data, merge=True)
-    except exceptions.ServiceUnavailable as e:
+    except (ServiceUnavailable, DeadlineExceeded) as e:
         return traceback.format_exc(), int(e.code)
 
     return 'Success!', 200
