@@ -33,6 +33,7 @@ Q_SIZE = 150
 MEMBERS_QUEUE = []
 GROUPS_QUEUE = []
 
+
 class ReqConfigs(Enum):
     stream_gcf = 'stream_gcf'
     gcs_bucket = 'stream_gcs_bucket'
@@ -144,19 +145,17 @@ class MeetupStream(object):
                         self.trigger_save_member_data, params=[MEMBERS_QUEUE],
                         ignored_exceptions=(self.FatalCloudFunctionError,),
                         tag=self.prefix)
-                    if success:
-                        pprint('save_member_data GCF triggered!',
-                               pformat=BColors.OKGREEN)
-                        MEMBERS_QUEUE.clear()
+                    pprint('save_member_data GCF triggered!',
+                           pformat=BColors.OKGREEN)
+                    MEMBERS_QUEUE.clear()
                 if len(GROUPS_QUEUE) >= Q_SIZE:
                     _, success = attempt_func_call(
                         self.trigger_save_group_data, params=[GROUPS_QUEUE],
                         ignored_exceptions=(self.FatalCloudFunctionError,),
                         tag=self.prefix)
-                    if success:
-                        pprint('save_group_data GCF triggered!',
-                               pformat=BColors.OKGREEN)
-                        GROUPS_QUEUE.clear()
+                    pprint('save_group_data GCF triggered!',
+                           pformat=BColors.OKGREEN)
+                    GROUPS_QUEUE.clear()
                 pprint(f"GQ:{len(GROUPS_QUEUE)} — MQ:{len(MEMBERS_QUEUE)}",
                        title=True)
 
