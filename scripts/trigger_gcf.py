@@ -119,6 +119,9 @@ class MeetupStream(object):
         request contains the last data streamed, as well as the GCS bucket
         name.
         """
+        queue_size = 150
+        members_queue = []
+        groups_queue = []
         while True:
             stream = self.__read_stream()  # The stream generator.
             for data_item in stream:
@@ -129,18 +132,26 @@ class MeetupStream(object):
                 if 'member' in data_item and \
                         'member_id' in data_item['member']:
                     member_id = data_item['member']['member_id']
-                    attempt_func_call(
-                        self.trigger_save_member_data, params=[member_id],
-                        ignored_exceptions=(self.FatalCloudFunctionError,),
-                        tag=self.prefix)
-
+                    members_queue.append(member_id)
                 if 'group' in data_item and \
                         'id' in data_item['group']:
                     group_id = data_item['group']['id']
-                    attempt_func_call(
-                        self.trigger_save_group_data, params=[group_id],
-                        ignored_exceptions=(self.FatalCloudFunctionError,),
-                        tag=self.prefix)
+                    groups_queue.append(group_id)
+            if len(members_queue) >= queue_size:
+                _, success = attempt_func_call(
+                    self.trigger_save_member_data, params=[members_queue],
+                    ignored_exceptions=(self.FatalCloudFunctionError,),
+                    tag=self.prefix)
+                if success:
+                    groups_queue.clear()
+
+            if len(groups_queue) >= queue_size:
+                _, success = attempt_func_call(
+                    self.trigger_save_group_data, params=[groups_queue],
+                    ignored_exceptions=(self.FatalCloudFunctionError,),
+                    tag=self.prefix)
+                if success:
+                    groups_queue.clear()
 
     def trigger_http_gcf(self,
                          url: str,
@@ -167,7 +178,7 @@ class MeetupStream(object):
 
     def trigger_save_member_data(self, member_id):
         params = {
-            "member_id": member_id,
+            "member_id": member_id.strip('[]').replace(' ', ''),
             "meetup_key": self.configs[ReqConfigs.meetup_key.value],
             "collection": self.configs[ReqConfigs.member_collection.value]
         }
@@ -176,7 +187,7 @@ class MeetupStream(object):
 
     def trigger_save_group_data(self, group_id):
         params = {
-            "group_id": group_id,
+            "group_id": group_id.strip('[]').replace(' ', ''),
             "meetup_key": self.configs[ReqConfigs.meetup_key.value],
             "collection": self.configs[ReqConfigs.group_collection.value]
         }

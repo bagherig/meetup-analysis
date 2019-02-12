@@ -31,7 +31,6 @@ def save_member_data(member_id: str,
     :return: Returns type Success, representing whether all methods were
         successful or not.
     """
-    doc_name = f'm{member_id}'
     meetup_url = 'https://api.meetup.com/2/members/'
     meetup_url += f'?member_id={member_id}&key={meetup_key}'
 
@@ -43,10 +42,19 @@ def save_member_data(member_id: str,
     except HTTPError as e:
         return traceback.format_exc(), int(e.code)
 
-    try:
-        DB.collection(collection_name).document(doc_name).set(data, merge=True)
-    except (ServiceUnavailable, DeadlineExceeded) as e:
-        return traceback.format_exc(), int(e.code)
+    if 'results' not in data:
+        return f"Unexpected response: {data}", 500
+    results = data['results']
+    for result in results:
+        try:
+            member_data = results[result]
+            doc_name = f"m{member_data['id']}"
+            DB.collection(collection_name).document(doc_name).set(member_data,
+                                                                  merge=True)
+        except (ServiceUnavailable, DeadlineExceeded) as e:
+            return traceback.format_exc(), int(e.code)
+        except KeyError:
+            return "Unexpected member data! 'id' not found...", 500
 
     return 'Success!', 200
 
