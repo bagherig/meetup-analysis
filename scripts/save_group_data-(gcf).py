@@ -32,7 +32,6 @@ def save_group_data(group_id: str,
     :return: Returns type Success, representing whether all methods were
         successful or not.
     """
-    doc_name = f'g{group_id}'
     meetup_url = 'https://api.meetup.com/2/groups'
     meetup_url += f'?group_id={group_id}&key={meetup_key}'
 
@@ -44,10 +43,19 @@ def save_group_data(group_id: str,
     except HTTPError as e:
         return traceback.format_exc(), int(e.code)
 
-    try:
-        DB.collection(collection_name).document(doc_name).set(data, merge=True)
-    except (ServiceUnavailable, DeadlineExceeded) as e:
-        return traceback.format_exc(), int(e.code)
+    if 'results' not in data:
+        return f"Unexpected response: {data}", 500
+    results = data['results']
+    for result in results:
+        try:
+            group_data = results[result]
+            doc_name = f"m{group_data['id']}"
+            DB.collection(collection_name).document(doc_name).set(group_data,
+                                                                  merge=True)
+        except (ServiceUnavailable, DeadlineExceeded) as e:
+            return traceback.format_exc(), int(e.code)
+        except KeyError:
+            return "Unexpected group data! 'id' not found...", 500
 
     return 'Success!', 200
 
