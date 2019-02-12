@@ -29,6 +29,9 @@ URLS = ["http://stream.meetup.com/2/event_comments",
         "http://stream.meetup.com/2/photos",
         "http://stream.meetup.com/2/rsvps"]
 
+Q_SIZE = 150
+MEMBERS_QUEUE = []
+GROUPS_QUEUE = []
 
 class ReqConfigs(Enum):
     stream_gcf = 'stream_gcf'
@@ -119,9 +122,6 @@ class MeetupStream(object):
         request contains the last data streamed, as well as the GCS bucket
         name.
         """
-        queue_size = 150
-        members_queue = []
-        groups_queue = []
         while True:
             stream = self.__read_stream()  # The stream generator.
             for data_item in stream:
@@ -132,30 +132,30 @@ class MeetupStream(object):
                 if 'member' in data_item and \
                         'member_id' in data_item['member']:
                     member_id = data_item['member']['member_id']
-                    members_queue.append(member_id)
+                    MEMBERS_QUEUE.append(member_id)
                 if 'group' in data_item and \
                         'id' in data_item['group']:
                     group_id = data_item['group']['id']
-                    groups_queue.append(group_id)
+                    GROUPS_QUEUE.append(group_id)
 
-                if len(members_queue) >= queue_size:
+                if len(MEMBERS_QUEUE) >= Q_SIZE:
                     _, success = attempt_func_call(
-                        self.trigger_save_member_data, params=[members_queue],
+                        self.trigger_save_member_data, params=[MEMBERS_QUEUE],
                         ignored_exceptions=(self.FatalCloudFunctionError,),
                         tag=self.prefix)
                     if success:
                         pprint('save_member_data GCF triggered!',
                                pformat=BColors.OKGREEN)
-                        groups_queue.clear()
-                if len(groups_queue) >= queue_size:
+                        GROUPS_QUEUE.clear()
+                if len(GROUPS_QUEUE) >= Q_SIZE:
                     _, success = attempt_func_call(
-                        self.trigger_save_group_data, params=[groups_queue],
+                        self.trigger_save_group_data, params=[GROUPS_QUEUE],
                         ignored_exceptions=(self.FatalCloudFunctionError,),
                         tag=self.prefix)
                     if success:
                         pprint('save_group_data GCF triggered!',
                                pformat=BColors.OKGREEN)
-                        groups_queue.clear()
+                        GROUPS_QUEUE.clear()
                 pprint(f"GQ:{len(groups_queue)} — MQ:{len(members_queue)}",
                        title=True)
 
