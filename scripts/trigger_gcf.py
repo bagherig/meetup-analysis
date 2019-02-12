@@ -137,31 +137,33 @@ class MeetupStream(object):
                         'id' in data_item['group']:
                     group_id = data_item['group']['id']
                     groups_queue.append(group_id)
-            if len(members_queue) >= queue_size:
-                _, success = attempt_func_call(
-                    self.trigger_save_member_data, params=[members_queue],
-                    ignored_exceptions=(self.FatalCloudFunctionError,),
-                    tag=self.prefix)
-                if success:
-                    pprint('save_member_data GCF triggered!',
-                           pformat=BColors.OKGREEN)
-                    groups_queue.clear()
 
-            if len(groups_queue) >= queue_size:
-                _, success = attempt_func_call(
-                    self.trigger_save_group_data, params=[groups_queue],
-                    ignored_exceptions=(self.FatalCloudFunctionError,),
-                    tag=self.prefix)
-                if success:
-                    pprint('save_group_data GCF triggered!',
-                           pformat=BColors.OKGREEN)
-                    groups_queue.clear()
+                if len(members_queue) >= queue_size:
+                    _, success = attempt_func_call(
+                        self.trigger_save_member_data, params=[members_queue],
+                        ignored_exceptions=(self.FatalCloudFunctionError,),
+                        tag=self.prefix)
+                    if success:
+                        pprint('save_member_data GCF triggered!',
+                               pformat=BColors.OKGREEN)
+                        groups_queue.clear()
+                if len(groups_queue) >= queue_size:
+                    _, success = attempt_func_call(
+                        self.trigger_save_group_data, params=[groups_queue],
+                        ignored_exceptions=(self.FatalCloudFunctionError,),
+                        tag=self.prefix)
+                    if success:
+                        pprint('save_group_data GCF triggered!',
+                               pformat=BColors.OKGREEN)
+                        groups_queue.clear()
+                pprint(f"groups-Q:{len(groups_queue)} — "
+                       f"members-Q:{len(members_queue)}",
+                       title=True)
 
     def trigger_http_gcf(self,
                          url: str,
                          data: dict = None,
                          params: dict = None):
-        name = url.split('/')[-1]
         if params:
             url = add_url_params(url, params)
         with requests.post(url, json=data) as r:
@@ -170,8 +172,6 @@ class MeetupStream(object):
                 raise self.RetriableCloudFunctionError(r.status_code, r.text)
             elif r.status_code != http.HTTPStatus.OK:
                 raise self.FatalCloudFunctionError(r.status_code, r.text)
-            pprint(int(datetime.datetime.now().time().second/2) * '.',
-                   pformat=BColors.OKBLUE, title=True)
 
     def trigger_save_stream_data(self, data):
         params = {
