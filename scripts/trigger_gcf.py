@@ -40,7 +40,7 @@ class Queue(object):
         self.items.append(item)
         if len(self.items) >= self.q_size:
             self.trigger(self.items)
-            pprint(f'{str(self.trigger)} triggered!',
+            pprint(f'{self.trigger.__name__} triggered!',
                    pformat=BColors.OKGREEN)
             self.items.clear()
 
