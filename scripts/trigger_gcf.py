@@ -166,7 +166,7 @@ class MeetupStream(object):
                 raise self.RetriableCloudFunctionError(r.status_code, r.text)
             elif r.status_code != http.HTTPStatus.OK:
                 raise self.FatalCloudFunctionError(r.status_code, r.text)
-            pprint(f'{name} GCF triggered!',
+            pprint(int(datetime.datetime.now().time().second/2) * '.',
                    pformat=BColors.OKBLUE, title=True)
 
     def trigger_save_stream_data(self, data):
