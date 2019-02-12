@@ -143,6 +143,8 @@ class MeetupStream(object):
                     ignored_exceptions=(self.FatalCloudFunctionError,),
                     tag=self.prefix)
                 if success:
+                    pprint('save_member_data GCF triggered!',
+                           pformat=BColors.OKGREEN)
                     groups_queue.clear()
 
             if len(groups_queue) >= queue_size:
@@ -151,6 +153,8 @@ class MeetupStream(object):
                     ignored_exceptions=(self.FatalCloudFunctionError,),
                     tag=self.prefix)
                 if success:
+                    pprint('save_group_data GCF triggered!',
+                           pformat=BColors.OKGREEN)
                     groups_queue.clear()
 
     def trigger_http_gcf(self,
