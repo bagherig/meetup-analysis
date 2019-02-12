@@ -29,9 +29,20 @@ URLS = ["http://stream.meetup.com/2/event_comments",
         "http://stream.meetup.com/2/photos",
         "http://stream.meetup.com/2/rsvps"]
 
-Q_SIZE = 150
-MEMBERS_QUEUE = []
-GROUPS_QUEUE = []
+
+class Queue(object):
+    def __init__(self, func_trigger: Callable, q_size: int):
+        self.items = []
+        self.trigger = func_trigger
+        self.q_size = q_size
+
+    def add(self, item: object):
+        self.items.append(item)
+        if len(self.items) >= self.q_size:
+            self.trigger(self.items)
+            pprint(f'{str(self.trigger)} triggered!',
+                   pformat=BColors.OKGREEN)
+            self.items.clear()
 
 
 class ReqConfigs(Enum):
@@ -123,7 +134,11 @@ class MeetupStream(object):
         request contains the last data streamed, as well as the GCS bucket
         name.
         """
-        global GROUPS_QUEUE, MEMBERS_QUEUE
+        q_size = 150
+        members_queue = Queue(func_trigger=self.trigger_save_member_data,
+                              q_size=q_size)
+        groups_queue = Queue(func_trigger=self.trigger_save_group_data,
+                              q_size=q_size)
         while True:
             stream = self.__read_stream()  # The stream generator.
             for data_item in stream:
@@ -134,29 +149,13 @@ class MeetupStream(object):
                 if 'member' in data_item and \
                         'member_id' in data_item['member']:
                     member_id = data_item['member']['member_id']
-                    MEMBERS_QUEUE.append(member_id)
+                    members_queue.add(member_id)
                 if 'group' in data_item and \
                         'id' in data_item['group']:
                     group_id = data_item['group']['id']
-                    GROUPS_QUEUE.append(group_id)
+                    groups_queue.add(group_id)
 
-                if len(MEMBERS_QUEUE) >= Q_SIZE:
-                    _, success = attempt_func_call(
-                        self.trigger_save_member_data, params=[MEMBERS_QUEUE],
-                        ignored_exceptions=(self.FatalCloudFunctionError,),
-                        tag=self.prefix)
-                    pprint('save_member_data GCF triggered!',
-                           pformat=BColors.OKGREEN)
-                    MEMBERS_QUEUE.clear()
-                if len(GROUPS_QUEUE) >= Q_SIZE:
-                    _, success = attempt_func_call(
-                        self.trigger_save_group_data, params=[GROUPS_QUEUE],
-                        ignored_exceptions=(self.FatalCloudFunctionError,),
-                        tag=self.prefix)
-                    pprint('save_group_data GCF triggered!',
-                           pformat=BColors.OKGREEN)
-                    GROUPS_QUEUE.clear()
-                pprint(f"GQ:{len(GROUPS_QUEUE)} — MQ:{len(MEMBERS_QUEUE)}",
+                pprint(f"{int(datetime.datetime.now().timestamp())}",
                        title=True)
 
     def trigger_http_gcf(self,
@@ -177,7 +176,10 @@ class MeetupStream(object):
             "label": self.prefix,
             "bucket_name": self.configs[ReqConfigs.gcs_bucket.value]}
         url = self.configs[ReqConfigs.stream_gcf.value]
-        self.trigger_http_gcf(url, data=data, params=params)
+        attempt_func_call(
+            self.trigger_http_gcf, params=[url, data, params],
+            ignored_exceptions=(self.FatalCloudFunctionError,),
+            tag=self.prefix)
 
     def trigger_save_member_data(self, member_id):
         params = {
@@ -186,7 +188,10 @@ class MeetupStream(object):
             "collection": self.configs[ReqConfigs.member_collection.value]
         }
         url = self.configs[ReqConfigs.member_gcf.value]
-        self.trigger_http_gcf(url, params=params)
+        attempt_func_call(
+            self.trigger_http_gcf, params=[url, None, params],
+            ignored_exceptions=(self.FatalCloudFunctionError,),
+            tag=self.prefix)
 
     def trigger_save_group_data(self, group_id):
         params = {
@@ -195,7 +200,10 @@ class MeetupStream(object):
             "collection": self.configs[ReqConfigs.group_collection.value]
         }
         url = self.configs[ReqConfigs.group_gcf.value]
-        self.trigger_http_gcf(url, params=params)
+        attempt_func_call(
+            self.trigger_http_gcf, params=[url, None, params],
+            ignored_exceptions=(self.FatalCloudFunctionError,),
+            tag=self.prefix)
 
     class CloudFunctionError(Exception):
         def __init__(self, status_code, response):
