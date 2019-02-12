@@ -156,8 +156,7 @@ class MeetupStream(object):
                         pprint('save_group_data GCF triggered!',
                                pformat=BColors.OKGREEN)
                         groups_queue.clear()
-                pprint(f"groups-Q:{len(groups_queue)} — "
-                       f"members-Q:{len(members_queue)}",
+                pprint(f"GQ:{len(groups_queue)} — MQ:{len(members_queue)}",
                        title=True)
 
     def trigger_http_gcf(self,
@@ -182,7 +181,7 @@ class MeetupStream(object):
 
     def trigger_save_member_data(self, member_id):
         params = {
-            "member_id": member_id.strip('[]').replace(' ', ''),
+            "member_id": str(member_id).strip('[]').replace(' ', ''),
             "meetup_key": self.configs[ReqConfigs.meetup_key.value],
             "collection": self.configs[ReqConfigs.member_collection.value]
         }
@@ -191,7 +190,7 @@ class MeetupStream(object):
 
     def trigger_save_group_data(self, group_id):
         params = {
-            "group_id": group_id.strip('[]').replace(' ', ''),
+            "group_id": str(group_id).strip('[]').replace(' ', ''),
             "meetup_key": self.configs[ReqConfigs.meetup_key.value],
             "collection": self.configs[ReqConfigs.group_collection.value]
         }
