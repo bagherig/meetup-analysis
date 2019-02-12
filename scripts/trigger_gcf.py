@@ -156,7 +156,7 @@ class MeetupStream(object):
                         pprint('save_group_data GCF triggered!',
                                pformat=BColors.OKGREEN)
                         GROUPS_QUEUE.clear()
-                pprint(f"GQ:{len(groups_queue)} — MQ:{len(members_queue)}",
+                pprint(f"GQ:{len(GROUPS_QUEUE)} — MQ:{len(MEMBERS_QUEUE)}",
                        title=True)
 
     def trigger_http_gcf(self,
