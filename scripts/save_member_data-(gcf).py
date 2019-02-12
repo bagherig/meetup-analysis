@@ -70,7 +70,7 @@ def main(request) -> Tuple[str, int]:
     member_id_par = 'member_id'
     meetup_key_par = 'meetup_key'
     collection_par = 'collection'
-    if request.args:  # Parse GCS folder name (label) and bucket name.:
+    if request.args:
         if member_id_par in request.args:
             member_id = request.args.get(member_id_par)
         if meetup_key_par in request.args:

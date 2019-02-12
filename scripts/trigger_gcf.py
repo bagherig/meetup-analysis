@@ -448,7 +448,8 @@ def add_url_params(url: str,
         url_parts = urlparse.urlparse(url)
         query = dict(urlparse.parse_qsl(url_parts.query))
         query.update(params)
-        url_parts = url_parts._replace(query=urlencode(query))
+        url_parts = \
+            url_parts._replace(query=urlencode(query).replace('%2C', ','))
         new_url = urlparse.urlunparse(url_parts)
     except Exception:
         # Log exceptions to Stackdriver-Logging.
