@@ -45,9 +45,8 @@ def save_member_data(member_id: str,
     if 'results' not in data:
         return f"Unexpected response: {data}", 500
     results = data['results']
-    for result in results:
+    for member_data in results:
         try:
-            member_data = results[result]
             doc_name = f"m{member_data['id']}"
             DB.collection(collection_name).document(doc_name).set(member_data,
                                                                   merge=True)
