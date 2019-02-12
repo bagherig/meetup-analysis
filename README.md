@@ -7,7 +7,7 @@ Meetup-Analysis is a project with the goal of predicting and finding patterns in
 The data used in this project included _open events_, _open venues_, _event comments_, _photos_, and _RSVP's_ obtained from ```stream.meetup.com```, as well as Meetup _member profiles_ and _group profiles_ data from ```api.meetup.com```. 
 
 ```bash
-pip install foobar
+TODO
 ```
 
 ## Usage
@@ -18,9 +18,6 @@ pip install foobar
 ```
 
 ## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
-Please make sure to update tests as appropriate.
-
-## License
-[MIT](https://choosealicense.com/licenses/mit/)
+```bash
+TODO
+```
