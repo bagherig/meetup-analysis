@@ -147,7 +147,7 @@ class MeetupStream(object):
                     if success:
                         pprint('save_member_data GCF triggered!',
                                pformat=BColors.OKGREEN)
-                        GROUPS_QUEUE.clear()
+                        MEMBERS_QUEUE.clear()
                 if len(GROUPS_QUEUE) >= Q_SIZE:
                     _, success = attempt_func_call(
                         self.trigger_save_group_data, params=[GROUPS_QUEUE],
