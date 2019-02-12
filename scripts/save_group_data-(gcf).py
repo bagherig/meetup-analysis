@@ -46,9 +46,8 @@ def save_group_data(group_id: str,
     if 'results' not in data:
         return f"Unexpected response: {data}", 500
     results = data['results']
-    for result in results:
+    for group_data in results:
         try:
-            group_data = results[result]
             doc_name = f"m{group_data['id']}"
             DB.collection(collection_name).document(doc_name).set(group_data,
                                                                   merge=True)
