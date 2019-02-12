@@ -122,6 +122,7 @@ class MeetupStream(object):
         request contains the last data streamed, as well as the GCS bucket
         name.
         """
+        global GROUPS_QUEUE, MEMBERS_QUEUE
         while True:
             stream = self.__read_stream()  # The stream generator.
             for data_item in stream:
