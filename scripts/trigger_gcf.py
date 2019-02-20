@@ -163,7 +163,7 @@ class MeetupStream(object):
                     groups_queue.add(group_id)
 
                 now = datetime.datetime.now()
-                if now - last_notify > notify_interval:  #and now.hour > 12:
+                if now - last_notify > notify_interval and now.hour > 12:
                     last_notify = now
                     LOGGER.log_text("Good news: Saving data!",
                                     log_name='Script-Monitor',
