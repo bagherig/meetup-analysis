@@ -134,10 +134,11 @@ class MeetupStream(object):
         request contains the last data streamed, as well as the GCS bucket
         name.
         """
-        notify_interval = 3  # In hours
+        notify_interval_hours = 3
+        notify_interval = datetime.timedelta(hours=notify_interval_hours)
         last_notify = datetime.datetime.now()
         last_notify.replace(
-            hour=last_notify.hour//notify_interval*notify_interval,
+            hour=last_notify.hour//notify_interval_hours*notify_interval_hours,
             minute=0)
 
         q_size = 150
