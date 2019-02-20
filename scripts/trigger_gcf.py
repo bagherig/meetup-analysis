@@ -134,12 +134,17 @@ class MeetupStream(object):
         request contains the last data streamed, as well as the GCS bucket
         name.
         """
+        notify_interval = 3  # In hours
         last_notify = datetime.datetime.now()
+        last_notify.replace(
+            hour=last_notify.hour//notify_interval*notify_interval,
+            minute=0)
+
         q_size = 150
         members_queue = Queue(func_trigger=self.trigger_save_member_data,
                               q_size=q_size)
         groups_queue = Queue(func_trigger=self.trigger_save_group_data,
-                              q_size=q_size)
+                             q_size=q_size)
         while True:
             stream = self.__read_stream()  # The stream generator.
             for data_item in stream:
@@ -156,14 +161,12 @@ class MeetupStream(object):
                     group_id = data_item['group']['id']
                     groups_queue.add(group_id)
 
-                notify_interval = datetime.timedelta(hours=3, minutes=0)
                 now = datetime.datetime.now()
-                if now - last_notify > notify_interval:
+                if now - last_notify > notify_interval:  #and now.hour > 12:
                     last_notify = now
                     LOGGER.log_text("Good news: Saving data!",
                                     log_name='Script-Monitor',
                                     severity='INFO')
-
                 pprint(str(int(now.timestamp())), title=True)
 
     def trigger_http_gcf(self,
