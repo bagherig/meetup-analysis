@@ -10,16 +10,16 @@ import datetime
 import requests
 import traceback
 import threading
+import subprocess
 import numpy as np
-import urllib.parse as urlparse
 from enum import Enum
+import urllib.parse as urlparse
 from google.cloud import logging
 from custom_typing import Logger
 from urllib.parse import urlencode
 from requests.exceptions import ChunkedEncodingError
 from google.auth.exceptions import DefaultCredentialsError
 from typing import Generator, List, Union, Tuple, Any, Callable
-import subprocess
 
 LOGGER = None
 LOGGER_NAME = "Trigger_GCF-Logger"
@@ -134,6 +134,7 @@ class MeetupStream(object):
         request contains the last data streamed, as well as the GCS bucket
         name.
         """
+        last_notify = datetime.datetime.now()
         q_size = 150
         members_queue = Queue(func_trigger=self.trigger_save_member_data,
                               q_size=q_size)
@@ -155,8 +156,15 @@ class MeetupStream(object):
                     group_id = data_item['group']['id']
                     groups_queue.add(group_id)
 
-                pprint(f"{int(datetime.datetime.now().timestamp())}",
-                       title=True)
+                notify_interval = datetime.timedelta(hours=3, minutes=0)
+                now = datetime.datetime.now()
+                if now - last_notify > notify_interval:
+                    last_notify = now
+                    LOGGER.log_text("Good news: Saving data!",
+                                    log_name='Script-Monitor',
+                                    severity='INFO')
+
+                pprint(str(int(now.timestamp())), title=True)
 
     def trigger_http_gcf(self,
                          url: str,
@@ -433,8 +441,11 @@ def get_exc_info_struct() -> dict:
     return exc_struct
 
 
-def pretty_json(json_str):
-    return codecs.decode(json.dumps(json_str, indent=4), 'unicode_escape')
+def pretty_json(json_dict):
+    pj = codecs.decode(json.dumps(json_dict, indent=4), 'unicode_escape')
+    # for key in
+    #     return pretty_j
+    return pj
 
 
 def add_url_params(url: str,
