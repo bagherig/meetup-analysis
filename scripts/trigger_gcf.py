@@ -134,6 +134,7 @@ class MeetupStream(object):
         request contains the last data streamed, as well as the GCS bucket
         name.
         """
+        notify_logger = 'projects/meetup-analysis/logs/Script-Monitor'
         notify_interval_hours = 3
         notify_interval = datetime.timedelta(hours=notify_interval_hours)
         last_notify = datetime.datetime.now()
@@ -166,7 +167,7 @@ class MeetupStream(object):
                 if now - last_notify > notify_interval and now.hour > 12:
                     last_notify = now
                     LOGGER.log_text("Good news: Saving data!",
-                                    log_name='Script-Monitor',
+                                    log_name=notify_logger,
                                     severity='INFO')
                 pprint(str(int(now.timestamp())), title=True)
 
