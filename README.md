@@ -33,6 +33,7 @@ TODO
 ```python
 "TODO: Explain how to set up VM and that cloud functions are necessary."
 "TODO: Explain what trigger_gcf.py inputs to the GCF's (i.e. what parameters should the GCf's take)"
+"TODO: Explain that a config.json file is necessary."
 ```
 
 # Contributing
