@@ -9,7 +9,7 @@ The data used in this project included [_open events_](http://stream.meetup.com/
 ## Flow Chart
 
 The following is an overall flowchart for collecting `meetup.com` data:
-<img src="https://www.lucidchart.com/publicSegments/view/8b677756-aa43-4ddc-b90f-32f74187f9bc/image.png"/>
+<img src="https://www.lucidchart.com/publicSegments/view/fc5e8185-0163-442b-b6d9-88d68fba0d50/image.png" width="500"/>
 ```python
 "TODO:
 ```
