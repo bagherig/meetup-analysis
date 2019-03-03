@@ -9,9 +9,24 @@ The data used in this project included [_open events_](http://stream.meetup.com/
 ## Flow Chart
 
 The following is an overall flowchart for collecting `meetup.com` data:
+
 <img src="https://www.lucidchart.com/publicSegments/view/555cb8c6-c02a-4f9d-a767-c9834a4bb38d/image.jpeg" width="500"/>
+
+
+## Cloud Functions
+Each Process in the flowchart was assigned to a [Cloud Functions](https://cloud.google.com/functions/docs/). Three cloud functions were responsible for storing the data inside GCS and Firestore; Another GCF was responsible for reporting all errors that occured in other cloud functions and scripts to Slack.
+
+### GCF: Save_stream_data
 ```python
-"TODO:
+"TODO: Explain what input it takes and what it does.
+```
+### GCF: Save_member_data
+```python
+"TODO: Explain what input it takes and what it does.
+```
+### GCF: Save_group_data
+```python
+"TODO: Explain what input it takes and what it does.
 ```
 
 ## Storage
