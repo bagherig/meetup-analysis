@@ -17,13 +17,13 @@ The following is an overall flowchart for collecting `meetup.com` data:
 Processes in the flowchart were assigned to [Cloud Functions](https://cloud.google.com/functions/docs/). Three cloud functions were responsible for storing the data inside GCS or Firestore; Another GCF was responsible for reporting all errors that occured in other cloud functions and scripts to Slack.
 
 ### GCF: Save_stream_data
-* Responsible for storing a piece of data obtained from [_open events_](http://stream.meetup.com/2/open_events), [_open venues_](http://stream.meetup.com/2/open_venues?trickle), [_event comments_](http://stream.meetup.com/2/event_comments), [_photos_](http://stream.meetup.com/2/photos), and [_RSVP's_](http://stream.meetup.com/2/rsvps) meetup streams.
-* Recieves the `_data_` as a request JSON, as well as the name of a Google Cloud Storage `_bucket_` and a `_lable_` (for describing what the data represents) as request arguments.
-* Stores the data in a file named with the format `{data_id}_{unix_timestamp}.json` in a folder named `_label_`. The cloud function is responsible for parsing an ID from the data it recieves.
-```python
-"TODO: Explain what input it takes and what it does.
-```
+* Responsible for storing data obtained from [_open events_](http://stream.meetup.com/2/open_events), [_open venues_](http://stream.meetup.com/2/open_venues?trickle), [_event comments_](http://stream.meetup.com/2/event_comments), [_photos_](http://stream.meetup.com/2/photos), and [_RSVP's_](http://stream.meetup.com/2/rsvps) meetup streams, inside a GCS bucket.
+* Recieves the `data` as a request JSON, as well as the name of a Google Cloud Storage `bucket` and a `lable` (for describing what the data represents) as request arguments.
+* Stores the data in a file named with the format `{data_id}_{unix_timestamp}.json` in a folder named `label`. The cloud function is responsible for parsing an ID from the data it recieves.
 ### GCF: Save_member_data
+* Responsible for storing a meetup member's data obtained from [_members_](https://api.meetup.com/2/members/) meetup api endpoint, inside Firestore.
+* Recieves the `data` as a request JSON, as well as the name of a Google Cloud Storage `bucket` and a `lable` (for describing what the data represents) as request arguments.
+* Stores the data in a file named with the format `{data_id}_{unix_timestamp}.json` in a folder named `label`. The cloud function is responsible for parsing an ID from the data it recieves.
 ```python
 "TODO: Explain what input it takes and what it does.
 ```
