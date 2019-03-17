@@ -37,7 +37,7 @@ Processes in the flowchart were assigned to [Cloud Functions](https://cloud.goog
 * Recieves a meetup `group_id`, a meetup `api_key`, and the name of a Firestore `collection` as request arguments.
 * Calls [_groups_](https://api.meetup.com/2/groups) API endpoint using `group_id` and `api_key`. Stores the data in a Firestore document named `m{group_id}` in a collection named `{collection}`.
 
-### GCF: Save_group_data
+### GCF: report_slack
 * **Trigger:** Pub/Sub
 * Responsible for storing a meetup group's data obtained from [_groups_](https://api.meetup.com/2/groups) meetup api endpoint, inside Firestore.  
 * Recieves a meetup `group_id`, a meetup `api_key`, and the name of a Firestore `collection` as request arguments.
