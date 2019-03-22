@@ -21,26 +21,26 @@ Processes in the flowchart were assigned to [Cloud Functions](https://cloud.goog
 
 ### GCF: save_stream_data
 * **Trigger:**`HTTP`
-* Responsible for storing data obtained from [_open events_](http://stream.meetup.com/2/open_events), [_open venues_](http://stream.meetup.com/2/open_venues?trickle), [_event comments_](http://stream.meetup.com/2/event_comments), [_photos_](http://stream.meetup.com/2/photos), and [_RSVP's_](http://stream.meetup.com/2/rsvps) meetup streams, inside a GCS bucket.
-* Recieves the `data` as a request JSON, as well as the name of a GCS `bucket` and a `label` (for describing what the data represents) as request arguments. 
+* **Responsibility:** Stores data obtained from [_open events_](http://stream.meetup.com/2/open_events), [_open venues_](http://stream.meetup.com/2/open_venues?trickle), [_event comments_](http://stream.meetup.com/2/event_comments), [_photos_](http://stream.meetup.com/2/photos), and [_RSVP's_](http://stream.meetup.com/2/rsvps) meetup streams, inside a GCS bucket.
+* **Parameters:** Recieves the `data` as a request JSON, as well as the name of a GCS `bucket` and a `label` (for describing what the data represents) as request arguments. 
 * Stores the data in a file named `{data_id}_{unix_epoch_time}.json` in a folder named `label`. The cloud function is responsible for parsing `data_id` from the data it recieves.
 
 ### GCF: save_member_data
 * **Trigger:** `HTTP`
-* Responsible for storing a meetup member's data obtained from [_members_](https://api.meetup.com/2/members/) meetup api endpoint, inside Firestore.
-* Recieves a meetup `member_id`, a meetup `api_key`, and the name of a Firestore `collection` as request arguments.
+* **Responsibility:** Stores a meetup member's data obtained from [_members_](https://api.meetup.com/2/members/) meetup api endpoint, inside Firestore.
+* **Parameters:** Recieves a meetup `member_id`, a meetup `api_key`, and the name of a Firestore `collection` as request arguments.
 * Calls [_members_](https://api.meetup.com/2/members/) API endpoint using `member_id` and `api_key`. Stores the data in a Firestore document named `m{member_id}` in a collection named `{collection}`.
 
 ### GCF: save_group_data
 * **Trigger:** `HTTP`
-* Responsible for storing a meetup group's data obtained from [_groups_](https://api.meetup.com/2/groups) meetup api endpoint, inside Firestore.
-* Recieves a meetup `group_id`, a meetup `api_key`, and the name of a Firestore `collection` as request arguments.
+* **Responsibility:** Stores a meetup group's data obtained from [_groups_](https://api.meetup.com/2/groups) meetup api endpoint, inside Firestore.
+* **Parameters:** Recieves a meetup `group_id`, a meetup `api_key`, and the name of a Firestore `collection` as request arguments.
 * Calls [_groups_](https://api.meetup.com/2/groups) API endpoint using `group_id` and `api_key`. Stores the data in a Firestore document named `m{group_id}` in a collection named `{collection}`.
 
 ### GCF: report_slack
 * **Trigger:** `Pub/Sub`
-* Responsible for storing a meetup group's data obtained from [_groups_](https://api.meetup.com/2/groups) meetup api endpoint, inside Firestore.  
-* Recieves a meetup `group_id`, a meetup `api_key`, and the name of a Firestore `collection` as request arguments.
+* **Responsibility:** Stores a meetup group's data obtained from [_groups_](https://api.meetup.com/2/groups) meetup api endpoint, inside Firestore.  
+* **Parameters:** Recieves a meetup `group_id`, a meetup `api_key`, and the name of a Firestore `collection` as request arguments.
 * Calls [_groups_](https://api.meetup.com/2/groups) API endpoint using `group_id` and `api_key`. Stores the data in a Firestore document named `m{group_id}` in a collection named `{collection}`.
 
 
