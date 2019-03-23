@@ -16,6 +16,8 @@ The following is an overall flowchart for collecting `meetup.com` data:
 ## Storage
 Raw open events, open venues, event comments, photos, and RSVP's data were stored in [_Google Cloud Storage_](https://console.cloud.google.com/storage/browser/meetup_stream_data?project=meetup-analysis). The member profiles and group profiles data were stored in a [_Google Cloud Firestore_](https://console.cloud.google.com/firestore) database.
 
+## Main Script
+The main script, `trigger_gcf.py`, is responsible for connecting to each `meetup.com` stream and triggering a Cloud Function to store the data inside a GCS bucket. Additionally, the script looks for 
 ## Cloud Functions
 Processes in the flowchart were assigned to [Cloud Functions](https://cloud.google.com/functions/docs/). Three cloud functions were responsible for storing the data inside GCS or Firestore; Another GCF was responsible for reporting all errors that occured in other cloud functions and scripts to Slack.
 
@@ -50,16 +52,14 @@ Several parts were responsible for monitoring the status of the data collection 
 
 1. All errors and exceptions were logged to `Stackdrive Logging`. Each log was assigned a [severity](https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#logseverity), which represents the seriousness of the error.
 2. All API calls were reattempted on failure using [Truncated exponential backoff](https://cloud.google.com/storage/docs/exponential-backoff).
-3. A Stackdriver `log export` was responsible for storing all errors and exceptions with a severity greater than **`ERROR`** in a GCS bucket. Below is the code used for the `log export`.
-
+3. A Stackdriver `log export` was responsible for storing all errors and exceptions with a severity greater than **`ERROR`** in a GCS bucket. Below is the code used for the `log export`:
 ```python
 resource.type="cloud_function" OR resource.type="global"
 severity >= ERROR
 ```
 
 
-4. A Stackdriver `log export` was responsible for sending all errors and exceptions with a severity greater than **`ERROR`** to a `Pub/Sub`, which in turn triggered the Google Cloud Function, `report_slack`. Additionally,  Below is the code used for the `log export`. 
-
+4. A Stackdriver `log export` was responsible for sending all errors and exceptions with a severity greater than **`ERROR`** to a `Pub/Sub`, which in turn notified Slack by triggering the Cloud Function, `report_slack`. Additionally, the `Pub/Sub` was notified of a logger with the `logName` `projects/meetup-analysis/logs/Script-Monitor`, which sent a log every 6 hours, to ensure that the script was running (In case the script stopped working for an unknown reason without logging the error). Below is the code used for the `log export`:
 ```python
 resource.type="cloud_function" OR resource.type="global"
 severity >= ERROR OR logName="projects/meetup-analysis/logs/Script-Monitor"```
