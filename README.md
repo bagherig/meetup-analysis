@@ -6,7 +6,6 @@ The data used in this project included [_open events_](http://stream.meetup.com/
 
 ## Flow Chart
 The following is an overall flowchart for collecting `meetup.com` data:
-
 <img src="https://www.lucidchart.com/publicSegments/view/555cb8c6-c02a-4f9d-a767-c9834a4bb38d/image.jpeg" width="500"/>
 
 ## Storage
@@ -55,19 +54,28 @@ severity >= ERROR
 4. A Stackdriver `log export` was responsible for sending all errors and exceptions with a severity greater than **`ERROR`** to a `Pub/Sub`, which in turn notified Slack by triggering the cloud function, `report_slack`. Additionally, the `Pub/Sub` was notified of a logger with the `logName` `projects/meetup-analysis/logs/Script-Monitor`, which sent a log every 6 hours, to ensure that the script was running (In case the script stopped working for an unknown reason without logging the error). Below is the code used for the `log export`:
 ```python
 resource.type="cloud_function" OR resource.type="global"
-severity >= ERROR OR logName="projects/meetup-analysis/logs/Script-Monitor"```
+severity >= ERROR OR logName="projects/meetup-analysis/logs/Script-Monitor"
 ```
 
 ## Usage
 First, set up the cloud functions, GCS buckets, and Firestore databases. The code for the cloud functions can be found under the folder, `scripts`. Next, run `trigger_gcf.py` script in order to start storing data from `meetup.com` streams. The script requires a `config.json` file. The required fields for this file are explained below:
+```bash
+{
+  "stream_gcf": [link to save_stream_data GCF],
+  "stream_gcs_bucket": [Name of GCS bucket for storing stream data],
+  "member_gcf": [link to save_member_data GCF],
+  "member_fs_collection": [Name of the Firestore collection for storing members' data],
+  "group_gcf": [link to save_group_data GCF],
+  "group_fs_collection": [Name of the Firestore collection for storing groups' data],
+  "meetup_api_key": [meetup.com API key]
+}
 ```
-TODO: config requirements
-```
+
 ### Setting up Google Compute Engine
 It is recommended to run this script on a Google [Compute Engine](https://cloud.google.com/compute/). These virtual machines provide consistent perfomance, along with other benefits. The steps for setting up the Google VM are described below:
 1. Create a [VM instance](https://console.cloud.google.com/projectselector/compute/instances?supportedpurview=project).
 2. SSH into the VM instance.
-3. Clone the repository and change to the `scripts` directory.
+3. Clone the repository and change to `scripts` directory.
 4. Run the following command, which gives `setup_google_cloud_vm.sh` shell script permission to run.
 ```bash
 chmod 755 setup_google_cloud_vm.sh
@@ -96,5 +104,4 @@ TODO
 # Contributing
 ```bash
 Moeen Bagheri
-
 ```
