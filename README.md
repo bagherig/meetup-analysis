@@ -9,12 +9,12 @@ The following is an overall flowchart for collecting `meetup.com` data:
 
 <img src="https://www.lucidchart.com/publicSegments/view/555cb8c6-c02a-4f9d-a767-c9834a4bb38d/image.jpeg" width="500"/>
 
-
 ## Storage
 Raw open events, open venues, event comments, photos, and RSVP's data were stored in [_Google Cloud Storage_](https://console.cloud.google.com/storage/browser/meetup_stream_data?project=meetup-analysis). The member profiles and group profiles data were stored in a [_Google Cloud Firestore_](https://console.cloud.google.com/firestore) database.
 
 ## Main Script
-The main script, `trigger_gcf.py`, is responsible for connecting to each `meetup.com` stream and triggering a Cloud Function to store the data inside a GCS bucket. Additionally, the script looks for 
+The main script, `trigger_gcf.py`, is responsible for connecting to each `meetup.com` stream and triggering a Cloud Function to store the data inside a GCS bucket. Additionally, the script checks whether each piece of data contains members or groups, and retrieves the data for that member/group from `api.meetup.com`.
+
 ## Cloud Functions
 Processes in the flowchart were assigned to [Cloud Functions](https://cloud.google.com/functions/docs/). Three cloud functions were responsible for storing the data inside GCS or Firestore; Another GCF was responsible for reporting all errors that occured in other cloud functions and scripts to Slack.
 
