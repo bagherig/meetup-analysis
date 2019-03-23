@@ -50,10 +50,19 @@ Several parts were responsible for monitoring the status of the data collection 
 
 1. All errors and exceptions were logged to `Stackdrive Logging`. Each log was assigned a [severity](https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#logseverity), which represents the seriousness of the error.
 2. All API calls were reattempted on failure using [Truncated exponential backoff](https://cloud.google.com/storage/docs/exponential-backoff).
-3. A Stackdriver `log export` was responsible for storing all errors and exceptions with a severity greater than **`ERROR`** in a GCS bucket.
-4. A Stackdriver `log export` was responsible for sending all errors and exceptions with a severity greater than **`ERROR`** to a `Pub/Sub`, which in turn triggered the Google Cloud Function, `repport_slack`.
-```bash
-TODO
+3. A Stackdriver `log export` was responsible for storing all errors and exceptions with a severity greater than **`ERROR`** in a GCS bucket. Below is the code used for the `log export`.
+
+```python
+resource.type="cloud_function" OR resource.type="global"
+severity >= ERROR
+```
+
+
+4. A Stackdriver `log export` was responsible for sending all errors and exceptions with a severity greater than **`ERROR`** to a `Pub/Sub`, which in turn triggered the Google Cloud Function, `report_slack`. Additionally,  Below is the code used for the `log export`. 
+
+```python
+resource.type="cloud_function" OR resource.type="global"
+severity >= ERROR OR logName="projects/meetup-analysis/logs/Script-Monitor"```
 ```
 
 ## Usage
