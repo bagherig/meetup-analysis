@@ -1,13 +1,10 @@
 # Meetup Analysis
-
 Meetup-Analysis is a project with the goal of predicting and finding patterns in `meetup.com` members' and groups' interests in certain products and activities. 
 
 # Part 1 — Data Collection
-
 The data used in this project included [_open events_](http://stream.meetup.com/2/open_events), [_open venues_](http://stream.meetup.com/2/open_venues?trickle), [_event comments_](http://stream.meetup.com/2/event_comments), [_photos_](http://stream.meetup.com/2/photos), and [_RSVP's_](http://stream.meetup.com/2/rsvps) obtained from `stream.meetup.com`, as well as Meetup [_member profiles_](https://api.meetup.com/2/members/) and [_group profiles_](https://api.meetup.com/2/groups) data from `api.meetup.com`. 
 
 ## Flow Chart
-
 The following is an overall flowchart for collecting `meetup.com` data:
 
 <img src="https://www.lucidchart.com/publicSegments/view/555cb8c6-c02a-4f9d-a767-c9834a4bb38d/image.jpeg" width="500"/>
@@ -45,9 +42,7 @@ Processes in the flowchart were assigned to [Cloud Functions](https://cloud.goog
 * **Parameters:** Recieves a meetup `group_id`, a meetup `api_key`, and the name of a Firestore `collection` as request arguments.
 * Calls [_groups_](https://api.meetup.com/2/groups) API endpoint using `group_id` and `api_key`. Stores the data in a Firestore document named `m{group_id}` in a collection named `{collection}`.
 
-
 ## Maintenance and Error Handling
-
 Several parts were responsible for monitoring the status of the data collection script:
 
 1. All errors and exceptions were logged to `Stackdrive Logging`. Each log was assigned a [severity](https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#logseverity), which represents the seriousness of the error.
@@ -57,8 +52,6 @@ Several parts were responsible for monitoring the status of the data collection 
 resource.type="cloud_function" OR resource.type="global"
 severity >= ERROR
 ```
-
-
 4. A Stackdriver `log export` was responsible for sending all errors and exceptions with a severity greater than **`ERROR`** to a `Pub/Sub`, which in turn notified Slack by triggering the cloud function, `report_slack`. Additionally, the `Pub/Sub` was notified of a logger with the `logName` `projects/meetup-analysis/logs/Script-Monitor`, which sent a log every 6 hours, to ensure that the script was running (In case the script stopped working for an unknown reason without logging the error). Below is the code used for the `log export`:
 ```python
 resource.type="cloud_function" OR resource.type="global"
@@ -95,10 +88,13 @@ Then, simply excute the script, `trigger_gcf.py`, using the command:
 python trigger_gcf.py
 ```
 Remember to detach from the tmux session before closing your SSH connection. To detach from a tmux session, simply press ```ctrl-b``` followed by the letter ```d```.
-"TODO: Explain how to set up VM and that cloud functions are necessary."
 
-
+# Part 2 — Data Preprocessing
+```python
+TODO
+```
 # Contributing
 ```bash
-TODO
+Moeen Bagheri
+
 ```
