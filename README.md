@@ -59,23 +59,44 @@ severity >= ERROR
 ```
 
 
-4. A Stackdriver `log export` was responsible for sending all errors and exceptions with a severity greater than **`ERROR`** to a `Pub/Sub`, which in turn notified Slack by triggering the Cloud Function, `report_slack`. Additionally, the `Pub/Sub` was notified of a logger with the `logName` `projects/meetup-analysis/logs/Script-Monitor`, which sent a log every 6 hours, to ensure that the script was running (In case the script stopped working for an unknown reason without logging the error). Below is the code used for the `log export`:
+4. A Stackdriver `log export` was responsible for sending all errors and exceptions with a severity greater than **`ERROR`** to a `Pub/Sub`, which in turn notified Slack by triggering the cloud function, `report_slack`. Additionally, the `Pub/Sub` was notified of a logger with the `logName` `projects/meetup-analysis/logs/Script-Monitor`, which sent a log every 6 hours, to ensure that the script was running (In case the script stopped working for an unknown reason without logging the error). Below is the code used for the `log export`:
 ```python
 resource.type="cloud_function" OR resource.type="global"
 severity >= ERROR OR logName="projects/meetup-analysis/logs/Script-Monitor"```
 ```
 
 ## Usage
-Run `trigger_gcf.py` script in order to start storing data from `meetup.com` streams. The script requires a `config.json` file. The required fields for the config are explained below:
+First, set up the cloud functions, GCS buckets, and Firestore databases. The code for the cloud functions can be found under the folder, `scripts`. Next, run `trigger_gcf.py` script in order to start storing data from `meetup.com` streams. The script requires a `config.json` file. The required fields for this file are explained below:
 ```
 TODO: config requirements
 ```
-
-It is recommended to run this script on a Google Compute Engine. This minimizes ... errors. 
-"TODO: Explain how to set up VM and that cloud functions are necessary."
-"TODO: Explain what trigger_gcf.py inputs to the GCF's (i.e. what parameters should the GCf's take)"
-"TODO: Explain that a config.json file is necessary."
+### Setting up Google Compute Engine
+It is recommended to run this script on a Google [Compute Engine](https://cloud.google.com/compute/). These virtual machines provide consistent perfomance, along with other benefits. The steps for setting up the Google VM are described below:
+1. Create a [VM instance](https://console.cloud.google.com/projectselector/compute/instances?supportedpurview=project).
+2. SSH into the VM instance.
+3. Clone the repository and change to the `scripts` directory.
+4. Run the following command, which gives `setup_google_cloud_vm.sh` shell script permission to run.
+```bash
+chmod 755 setup_google_cloud_vm.sh
 ```
+5. Run `setup_google_cloud_vm.sh` using the command:
+```bash
+./setup_google_cloud_vm.sh
+```
+The shell script, `setup_google_cloud_vm.sh`, has a list of commands to set up the VM. These commands include installing `tmux` and `Anaconda`. The shell script also creates a new tmux session named `meetup`.
+
+### Running the Python script
+Once the VM is set up, attach to the newly created tmux session named `meetup`, by executing the command:
+```bash
+tmux attach -t meetup
+```
+Then, simply excute the script, `trigger_gcf.py`, using the command: 
+```bash
+python trigger_gcf.py
+```
+Remember to detach from the tmux session before closing your SSH connection. To detach from a tmux session, simply press ```ctrl-b``` followed by the letter ```d```.
+"TODO: Explain how to set up VM and that cloud functions are necessary."
+
 
 # Contributing
 ```bash
