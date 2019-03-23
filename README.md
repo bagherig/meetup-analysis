@@ -66,8 +66,12 @@ severity >= ERROR OR logName="projects/meetup-analysis/logs/Script-Monitor"```
 ```
 
 ## Usage
+Run `trigger_gcf.py` script in order to start storing data from `meetup.com` streams. The script requires a `config.json` file. The required fields for the config are explained below:
+```
+TODO: config requirements
+```
 
-```python
+It is recommended to run this script on a Google Compute Engine. This minimizes ... errors. 
 "TODO: Explain how to set up VM and that cloud functions are necessary."
 "TODO: Explain what trigger_gcf.py inputs to the GCF's (i.e. what parameters should the GCf's take)"
 "TODO: Explain that a config.json file is necessary."
