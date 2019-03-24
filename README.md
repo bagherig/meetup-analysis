@@ -44,7 +44,7 @@ Processes in the flowchart were assigned to [Cloud Functions](https://cloud.goog
 ## Maintenance and Error Handling
 Several parts were responsible for monitoring the status of the data collection script:
 
-1. All errors and exceptions were logged to `Stackdrive Logging`. Each log was assigned a [severity](https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#logseverity), which represents the seriousness of the error.
+1. All errors and exceptions were logged to [`Stackdrive Logging`](https://cloud.google.com/logging/). Each log was assigned a [severity](https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#logseverity), which represents the seriousness of the error.
 2. All API calls were reattempted on failure using [Truncated exponential backoff](https://cloud.google.com/storage/docs/exponential-backoff).
 3. A Stackdriver `log export` was responsible for storing all errors and exceptions with a severity greater than **`ERROR`** in a GCS bucket. Below is the code used for the `log export`:
 ```python
@@ -58,7 +58,7 @@ severity >= ERROR OR logName="projects/meetup-analysis/logs/Script-Monitor"
 ```
 
 ## Usage
-First, set up the cloud functions, GCS buckets, and Firestore databases. The code for the cloud functions can be found under the folder, `scripts`. Next, run `trigger_gcf.py` script in order to start storing data from `meetup.com` streams. The script requires a `config.json` file. The required fields for this file are explained below:
+First, set up the cloud functions, GCS buckets, and Firestore databases. The code for the cloud functions can be found under the folder, `scripts`. Next, run `trigger_gcf.py` script in order to start storing data from `meetup.com` streams. The script requires a `config.json` file inside the main project folder, `meetup-analysis`. The required fields for this file are explained below:
 ```bash
 {
   "stream_gcf": [link to save_stream_data GCF],
