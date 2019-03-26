@@ -91,7 +91,7 @@ Once the VM is set up, attach to the newly created tmux session named `meetup`, 
 ```bash
 tmux attach -t meetup
 ```
-Then, simply excute the script, `trigger_gcf.py`, using the command: 
+Next, create your `config.json` file and then simply excute the script, `trigger_gcf.py`, using the command: 
 ```bash
 python trigger_gcf.py
 ```
