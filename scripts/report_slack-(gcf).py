@@ -83,7 +83,7 @@ def format_slack_message(content):
 
 
 def report_slack(content):
-    webhook_url = 'REDACTED_SLACK_WEBHOOK'
+    webhook_url = os.environ['SLACK_WEBHOOK_URL']
     message = format_slack_message(content)
     if message:
         response = requests.post(

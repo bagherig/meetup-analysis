@@ -116,3 +116,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Local environments and IDE files
+venv/
+.venv/
+.idea/
+.vscode/
